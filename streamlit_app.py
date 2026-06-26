@@ -31,7 +31,7 @@ if not st.session_state.logged_in:
 
     with col2:
         if st.button("Create Account"):
-            st.switch_page("create_account.py")
+            st.switch_page("pages/create_account.py")
 
 else:
     st.success("Login successful!")
