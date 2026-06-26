@@ -1,7 +1,7 @@
 {
     "python-envs.pythonProjects": [
         {
-            "path": ".vscode/streamlit_app.py",
+            "path": "streamlit_app.py",
             "envManager": "ms-python.python:venv",
             "packageManager": "ms-python.python:pip"
         }
