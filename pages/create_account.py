@@ -105,7 +105,7 @@ with st.form("create_account_form"):
             if success:
                 st.success(f"✅ {message}")
                 st.info("You can now login with your credentials!")
-                if st.button("← Back to Login"):
+                if st.button("← Back to Home"):
                     st.switch_page("main.py")
             else:
                 st.error(f"❌ {message}")
@@ -113,5 +113,5 @@ with st.form("create_account_form"):
 # Back button outside the form
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
-    if st.button("← Back to Login", use_container_width=True):
+    if st.button("← Back to Home", use_container_width=True):
         st.switch_page("main.py")
