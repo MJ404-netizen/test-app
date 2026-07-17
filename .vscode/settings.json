@@ -1,7 +1,7 @@
 {
     "python-envs.pythonProjects": [
         {
-            "path": "streamlit_app.py",
+            "path": "main.py",
             "envManager": "ms-python.python:venv",
             "packageManager": "ms-python.python:pip"
         }
