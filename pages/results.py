@@ -13,6 +13,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from io import BytesIO
 import base64
 from datetime import datetime
+from utils.txt_generator import generate_txt_report  # Import TXT generator
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
@@ -380,7 +381,7 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=24,
-        textColor=colors.blue,  # Using 'blue' instead of 'navy'
+        textColor=colors.blue,
         alignment=TA_CENTER,
         spaceAfter=30
     )
@@ -952,67 +953,37 @@ with col1:
         st.switch_page("pages/stress_test.py")
 
 with col2:
-    # PDF Download Button
-    if st.button("📄 Download PDF", use_container_width=True, type="primary"):
-        with st.spinner("Generating PDF report..."):
-            pdf_buffer = generate_pdf_report(
-                gender, gender_code, age, answers, question_texts, categories,
-                total_score, percentage, stress_level, stress_type,
-                category_scores, top_stress_areas
-            )
-            
-            st.download_button(
-                label="📥 Click to Download PDF",
-                data=pdf_buffer,
-                file_name=f"stress_test_report_{age}_{gender}_{datetime.now().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                key="pdf_download"
-            )
+    # PDF Download Button - Direct download
+    pdf_buffer = generate_pdf_report(
+        gender, gender_code, age, answers, question_texts, categories,
+        total_score, percentage, stress_level, stress_type,
+        category_scores, top_stress_areas
+    )
+    
+    st.download_button(
+        label="📄 Download PDF",
+        data=pdf_buffer,
+        file_name=f"stress_test_report_{age}_{gender}_{datetime.now().strftime('%Y%m%d')}.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+        type="primary"
+    )
 
 with col3:
-    if st.button("📊 Download Report (TXT)", use_container_width=True):
-        report = f"""
-STRESS TEST REPORT
-===================
-
-Personal Information:
-- Gender: {gender} (Code: {gender_code})
-- Age: {age}
-- Questions Answered: {len(answers)}
-
-Stress Type Classification:
-- Type: {stress_type}
-
-Overall Stress Level:
-- Level: {stress_level}
-- Score: {percentage:.1f}%
-- Total Score: {total_score}
-
-Stress Breakdown by Category:
-"""
-        for category, score in category_scores.items():
-            report += f"\n  {category}: {score:.1f}/5"
-        
-        if top_stress_areas:
-            report += "\n\nTop Stress Areas:"
-            for item in top_stress_areas[:3]:
-                report += f"\n  - {item['question']}: {item['score']}/5 ({item['level']})"
-        
-        report += "\n\nDetailed Answers:\n"
-        for q_id, answer in sorted(answers.items()):
-            if q_id >= 3:
-                q_text = question_texts.get(q_id, f"Q{q_id}")
-                report += f"\nQ{q_id}: {q_text}\n  Answer: {answer}\n"
-        
-        st.download_button(
-            label="📥 Click to Download TXT",
-            data=report,
-            file_name=f"stress_test_report_{age}_{gender}.txt",
-            mime="text/plain",
-            use_container_width=True,
-            key="txt_download"
-        )
+    # TXT Report - Direct download using imported function
+    txt_report = generate_txt_report(
+        gender, gender_code, age, answers, question_texts, categories,
+        total_score, percentage, stress_level, stress_type,
+        category_scores, top_stress_areas
+    )
+    
+    st.download_button(
+        label="📄 Download TXT",
+        data=txt_report,
+        file_name=f"stress_test_report_{age}_{gender}.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
 
 with col4:
     if st.button("🏠 Home", use_container_width=True):
