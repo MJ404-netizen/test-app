@@ -1,8 +1,10 @@
 import streamlit as st
+import json
+import os
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
-    page_title="Stress Test",
+    page_title="Stress Test Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -45,7 +47,6 @@ hide_streamlit_style = """
             margin: 20px 0;
         }
         
-        /* FORCE BUTTON STYLES - MORE SPECIFIC SELECTORS */
         .stButton button {
             width: 100% !important;
             border-radius: 60px !important;
@@ -61,12 +62,6 @@ hide_streamlit_style = """
             min-height: 80px !important;
         }
         
-        .stButton {
-            display: flex !important;
-            justify-content: center !important;
-        }
-        
-        /* Primary button (green) */
         .stButton button[kind="primary"] {
             background: #4CAF50 !important;
             color: white !important;
@@ -77,7 +72,6 @@ hide_streamlit_style = """
             transform: translateY(-3px);
         }
         
-        /* Secondary button (transparent) */
         .stButton button:not([kind="primary"]) {
             background: rgba(255, 255, 255, 0.20) !important;
             color: #1B5E20 !important;
@@ -93,12 +87,27 @@ hide_streamlit_style = """
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# ---------- CHECK LOGIN STATUS ----------
+# ---------- CHECK LOGIN ----------
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("⚠️ Please login to access this page.")
     if st.button("🔐 Go to Login"):
         st.switch_page("pages/login.py")
     st.stop()
+
+# ---------- HISTORY FUNCTIONS ----------
+def get_user_history_file():
+    username = st.session_state.get("username", "default")
+    return f"user_history_{username}.json"
+
+def load_test_history():
+    history_file = get_user_history_file()
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, 'r') as f:
+                return json.load(f)
+        except:
+            return []
+    return []
 
 # ---------- WELCOME MESSAGE ----------
 username = st.session_state.get("username", "User")
@@ -119,30 +128,74 @@ st.write("""
 """)
 
 col1, col2, col3 = st.columns(3)
-
 with col1:
     st.metric("⏱️ Duration", "15-20 min")
-
 with col2:
     st.metric("📋 Questions", "25")
-
 with col3:
     st.metric("🎯 Purpose", "Stress Type Assessment")
 
-# ---------- START TEST BUTTON ----------
+# ---------- ACTION BUTTONS ----------
 st.divider()
 
-col1, col2, col3 = st.columns([1, 2, 1])
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🚀 Start Test", use_container_width=True, type="primary"):
+        st.session_state.current_q_index = 0
+        st.session_state.answers = {}
+        st.session_state.user_responses = {}
+        st.session_state.formatted_answers = {}
+        st.session_state.test_completed = False
+        st.session_state.gender = None
+        st.session_state.gender_code = None
+        st.session_state.age = None
+        st.session_state.viewing_history = False
+        st.session_state.history_saved = False  # <-- Reset for new test
+        st.switch_page("pages/test_questions.py")
 
 with col2:
-    if st.button("🚀 Start Test", use_container_width=True, type="primary"):
-        st.switch_page("pages/test_questions.py")  # ← Navigation works!
+    if st.button("📜 View History", use_container_width=True):
+        st.switch_page("pages/history.py")
 
-# ---------- LOGOUT BUTTON ----------
+# ---------- QUICK STATS ----------
+history = load_test_history()
+
+if history:
+    st.divider()
+    st.subheader("📊 Your Test History Summary")
+    
+    total_tests = len(history)
+    latest = history[0] if history else None
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Tests", total_tests)
+    with col2:
+        if latest:
+            stress_type = latest.get("stress_type", "N/A")
+            st.metric("Latest Result", stress_type)
+    with col3:
+        if latest:
+            percentage = latest.get("percentage", 0)
+            st.metric("Latest Score", f"{percentage:.1f}%")
+    with col4:
+        if latest:
+            date = latest.get("date", "N/A")
+            if len(date) > 10:
+                date = date[:10]
+            st.metric("Last Test Date", date)
+    
+    if latest:
+        st.info(f"💡 Your last test on **{latest.get('date', 'N/A')}** showed **{latest.get('stress_type', 'N/A')}** with a stress level of **{latest.get('stress_level', 'N/A')}**")
+else:
+    st.divider()
+    st.info("📭 You haven't taken any tests yet. Click 'Start Test' to begin!")
+
+# ---------- LOGOUT ----------
 st.divider()
-
 col1, col2, col3 = st.columns([1, 2, 1])
-
 with col2:
     if st.button("🚪 Logout", use_container_width=True):
         st.session_state.logged_in = False

@@ -13,7 +13,9 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from io import BytesIO
 import base64
 from datetime import datetime
-from utils.txt_generator import generate_txt_report  # Import TXT generator
+import json
+import os
+from utils.txt_generator import generate_txt_report
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
@@ -138,11 +140,25 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 if not st.session_state.get("test_completed", False):
     st.warning("⚠️ Please complete the stress test first to view results.")
     if st.button("📝 Take the Test"):
-        st.switch_page("pages/stress_test.py")
+        st.switch_page("pages/test_questions.py")
     st.stop()
 
 # ---------- HEADER ----------
 st.title("📊 Stress Test Results")
+st.markdown("---")
+
+# ---------- BACK BUTTON ----------
+col1, col2, col3 = st.columns([1, 1, 4])
+with col1:
+    # Check if we came from history
+    if st.session_state.get("viewing_history", False):
+        if st.button("← Back to History", use_container_width=True):
+            st.session_state.viewing_history = False
+            st.switch_page("pages/history.py")
+    else:
+        if st.button("← Back to Test", use_container_width=True):
+            st.switch_page("pages/test_page.py")
+
 st.markdown("---")
 
 # ---------- GET USER DATA ----------
@@ -362,6 +378,46 @@ def get_top_stress_areas(answers, categories, question_texts):
     stress_items.sort(key=lambda x: x["score"], reverse=True)
     return stress_items[:5]
 
+# ---------- SAVE TO HISTORY FUNCTION ----------
+def save_test_history(answers, gender, gender_code, age, stress_type, stress_level, percentage):
+    """Save test results to user history"""
+    username = st.session_state.get("username", "default")
+    history_file = f"user_history_{username}.json"
+    
+    # Load existing history
+    history = []
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+        except:
+            history = []
+    
+    # Create new entry
+    entry = {
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "gender": gender,
+        "gender_code": gender_code,
+        "age": age,
+        "stress_type": stress_type,
+        "stress_level": stress_level,
+        "percentage": percentage,
+        "answers": answers,
+        "total_questions": len(answers)
+    }
+    
+    # Add to history (newest first)
+    history.insert(0, entry)
+    
+    # Keep only last 50 entries
+    history = history[:50]
+    
+    # Save back
+    with open(history_file, 'w') as f:
+        json.dump(history, f, indent=2)
+    
+    return entry
+
 # ---------- PDF GENERATION FUNCTION ----------
 def generate_pdf_report(gender, gender_code, age, answers, question_texts, categories, 
                         total_score, percentage, stress_level, stress_type, 
@@ -580,6 +636,24 @@ stress_level, stress_class, stress_emoji = get_stress_level(percentage)
 stress_type, stress_type_class, stress_type_emoji = calculate_stress_type(answers, categories)
 category_scores, category_details = calculate_category_scores(answers, categories)
 top_stress_areas = get_top_stress_areas(answers, categories, question_texts)
+
+# ---------- SAVE TO HISTORY (only if not viewing history AND not already saved) ----------
+should_save = (
+    not st.session_state.get("viewing_history", False) and 
+    not st.session_state.get("history_saved", False)
+)
+
+if should_save:
+    save_test_history(
+        answers=answers,
+        gender=gender,
+        gender_code=gender_code,
+        age=age,
+        stress_type=stress_type,
+        stress_level=stress_level,
+        percentage=percentage
+    )
+    st.session_state.history_saved = True  # Mark as saved to prevent duplicate
 
 # ---------- DISPLAY RESULTS ----------
 # Row 1: User Info
@@ -950,7 +1024,9 @@ with col1:
         st.session_state.gender = None
         st.session_state.gender_code = None
         st.session_state.age = None
-        st.switch_page("pages/stress_test.py")
+        st.session_state.viewing_history = False
+        st.session_state.history_saved = False  # Reset for new test
+        st.switch_page("pages/test_questions.py")
 
 with col2:
     # PDF Download Button - Direct download
@@ -987,7 +1063,8 @@ with col3:
 
 with col4:
     if st.button("🏠 Home", use_container_width=True):
-        st.switch_page("main.py")
+        st.session_state.viewing_history = False
+        st.switch_page("pages/test_page.py")
 
 with col5:
     if st.button("🚪 Logout", use_container_width=True):

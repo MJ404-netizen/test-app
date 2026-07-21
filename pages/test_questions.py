@@ -266,6 +266,10 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
         st.switch_page("pages/login.py")
     st.stop()
 
+# ---------- RESET VIEWING HISTORY FLAG ----------
+# When user is on the test questions page, ensure we're not in viewing history mode
+st.session_state.viewing_history = False
+
 # ---------- CSV FILE PATH ----------
 CSV_PATH = "Stress_Dataset.csv"
 
@@ -425,6 +429,8 @@ if "answers" not in st.session_state:
     st.session_state.answers = {}
 if "test_completed" not in st.session_state:
     st.session_state.test_completed = False
+if "history_saved" not in st.session_state:
+    st.session_state.history_saved = False  # <-- ADD THIS
 if "user_responses" not in st.session_state:
     st.session_state.user_responses = {}
 if "formatted_answers" not in st.session_state:
@@ -474,6 +480,9 @@ if st.session_state.test_completed:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("📊 View Results", use_container_width=True, type="primary"):
+            # Reset history_saved before going to results
+            st.session_state.history_saved = False
+            st.session_state.viewing_history = False
             st.switch_page("pages/results.py")
         if st.button("← Back to Home", use_container_width=True):
             st.switch_page("main.py")
@@ -616,8 +625,12 @@ if current_index >= 0 and current_index < total_questions:
                                 elif q_id == 2:
                                     st.session_state.age = int(selected_option)
                             
+                            # Reset history_saved flag before going to results
+                            st.session_state.history_saved = False
+                            st.session_state.viewing_history = False
                             st.session_state.test_completed = True
                             st.rerun()
+
                 else:
                     # Not last question - Show NEXT button
                     if st.button("➡️ Next", use_container_width=True, type="primary"):
@@ -667,6 +680,7 @@ if current_index >= 0 and current_index < total_questions:
             st.session_state.gender = None
             st.session_state.gender_code = None
             st.session_state.age = None
+            st.session_state.history_saved = False
             # Clear individual question variables
             for i in range(1, 26):
                 if f"q_{i}_answer" in st.session_state:

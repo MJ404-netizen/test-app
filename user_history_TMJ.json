@@ -1,0 +1,39 @@
+[
+  {
+    "date": "2026-07-21 11:07:33",
+    "gender": "Female",
+    "gender_code": 1,
+    "age": 21,
+    "stress_type": "Eustress",
+    "stress_level": "Moderate Stress",
+    "percentage": 62.60869565217392,
+    "answers": {
+      "1": "Female",
+      "2": "21",
+      "3": "4 - Often",
+      "4": "4 - Often",
+      "5": "2 - Moderate",
+      "6": "1 - Never",
+      "7": "2 - Rarely",
+      "8": "3 - Sometimes",
+      "9": "5 - Always",
+      "10": "4 - Often",
+      "11": "3 - Sometimes",
+      "12": "2 - Rarely",
+      "13": "3 - Sometimes",
+      "14": "4 - Often",
+      "15": "4 - Often",
+      "16": "3 - Sometimes",
+      "17": "2 - Rarely",
+      "18": "3 - Sometimes",
+      "19": "3 - Sometimes",
+      "20": "3 - Sometimes",
+      "21": "4 - Often",
+      "22": "4 - Often",
+      "23": "2 - Rarely",
+      "24": "5 - Always",
+      "25": "2 - Rarely"
+    },
+    "total_questions": 25
+  }
+]
