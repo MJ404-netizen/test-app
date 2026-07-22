@@ -147,20 +147,6 @@ if not st.session_state.get("test_completed", False):
 st.title("📊 Stress Test Results")
 st.markdown("---")
 
-# ---------- BACK BUTTON ----------
-col1, col2, col3 = st.columns([1, 1, 4])
-with col1:
-    # Check if we came from history
-    if st.session_state.get("viewing_history", False):
-        if st.button("← Back to History", use_container_width=True):
-            st.session_state.viewing_history = False
-            st.switch_page("pages/history.py")
-    else:
-        if st.button("← Back to Test", use_container_width=True):
-            st.switch_page("pages/test_page.py")
-
-st.markdown("---")
-
 # ---------- GET USER DATA ----------
 gender = st.session_state.get("gender", "Not specified")
 gender_code = st.session_state.get("gender_code", "N/A")
@@ -1012,7 +998,7 @@ if response_data:
 st.markdown("---")
 
 # Row 9: Action Buttons
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3 = st.columns(3)  # Changed to 3 columns
 
 with col1:
     if st.button("🔄 Retake Test", use_container_width=True):
@@ -1025,11 +1011,11 @@ with col1:
         st.session_state.gender_code = None
         st.session_state.age = None
         st.session_state.viewing_history = False
-        st.session_state.history_saved = False  # Reset for new test
+        st.session_state.history_saved = False
         st.switch_page("pages/test_questions.py")
 
 with col2:
-    # PDF Download Button - Direct download
+    # PDF Download Button
     pdf_buffer = generate_pdf_report(
         gender, gender_code, age, answers, question_texts, categories,
         total_score, percentage, stress_level, stress_type,
@@ -1046,7 +1032,7 @@ with col2:
     )
 
 with col3:
-    # TXT Report - Direct download using imported function
+    # TXT Report
     txt_report = generate_txt_report(
         gender, gender_code, age, answers, question_texts, categories,
         total_score, percentage, stress_level, stress_type,
@@ -1061,12 +1047,21 @@ with col3:
         use_container_width=True
     )
 
-with col4:
+# ---------- HOME AND LOGOUT BUTTONS ----------
+st.divider()
+
+col1, col2, col3 = st.columns([1, 2, 1])
+
+with col2:
     if st.button("🏠 Home", use_container_width=True):
         st.session_state.viewing_history = False
         st.switch_page("pages/test_page.py")
 
-with col5:
+st.divider()
+
+col1, col2, col3 = st.columns([1, 2, 1])
+
+with col2:
     if st.button("🚪 Logout", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.username = ""
