@@ -16,6 +16,7 @@ from datetime import datetime
 import json
 import os
 from utils.txt_generator import generate_txt_report
+from utils.svm_predictor import predict_stress_type
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
@@ -407,7 +408,7 @@ def save_test_history(answers, gender, gender_code, age, stress_type, stress_lev
 # ---------- PDF GENERATION FUNCTION ----------
 def generate_pdf_report(gender, gender_code, age, answers, question_texts, categories, 
                         total_score, percentage, stress_level, stress_type, 
-                        category_scores, top_stress_areas):
+                        category_scores, top_stress_areas, svm_confidence=None):
     """Generate PDF report using reportlab"""
     
     buffer = BytesIO()
@@ -482,7 +483,13 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
         alignment=TA_CENTER,
         spaceAfter=10
     )
+    
     story.append(Paragraph(f"<b>{stress_type}</b>", stress_type_style))
+    if svm_confidence is not None:
+        story.append(Paragraph(
+            f"<i>Model confidence: {svm_confidence*100:.1f}% (SVM classifier)</i>",
+            styles['Normal']
+        ))
     story.append(Spacer(1, 10))
     
     # Stress Level
@@ -619,7 +626,38 @@ question_texts, categories = get_question_mapping()
 # ---------- CALCULATE RESULTS ----------
 total_score, percentage = calculate_stress_score(answers)
 stress_level, stress_class, stress_emoji = get_stress_level(percentage)
-stress_type, stress_type_class, stress_type_emoji = calculate_stress_type(answers, categories)
+# ---------- SVM-BASED STRESS TYPE PREDICTION ----------
+svm_confidence = None
+svm_probabilities = None
+svm_error = None
+
+try:
+    svm_output = predict_stress_type(
+        answers=answers,
+        gender_code=gender_code,
+        age=age
+    )
+    stress_type       = svm_output['type']
+    svm_confidence    = svm_output['confidence']
+    svm_probabilities = svm_output['probabilities']
+except Exception as e:
+    svm_error = str(e)
+    # Fallback to rule-based if SVM fails
+    stress_type, _, _ = calculate_stress_type(answers, categories)
+
+# Map to CSS class + emoji
+STRESS_TYPE_STYLE = {
+    "Eustress":   ("stress-eustress",  "💪"),
+    "Distress":   ("stress-distress",  "😰"),
+    "No Stress":  ("stress-no-stress", "😌"),
+}
+stress_type_class, stress_type_emoji = STRESS_TYPE_STYLE.get(
+    stress_type, ("stress-no-stress", "😌")
+)
+
+if svm_error:
+    st.warning(f"⚠️ SVM model unavailable — using rule-based fallback. ({svm_error})")
+
 category_scores, category_details = calculate_category_scores(answers, categories)
 top_stress_areas = get_top_stress_areas(answers, categories, question_texts)
 
@@ -661,18 +699,68 @@ st.subheader("🧠 Your Stress Type Classification")
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    # Display stress type
-    st.markdown(f"""
-        <div class="stress-type-box">
-            <div style="font-size: 72px; margin: 10px 0;">{stress_type_emoji}</div>
-            <div class="stress-level {stress_type_class}" style="font-size: 32px;">
-                {stress_type}
-            </div>
-            <div style="margin-top: 15px; font-size: 16px; color: #666;">
-                Based on your response patterns across all categories
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    if svm_confidence is not None:
+        conf_html = (
+            f'<div style="margin-top:12px;font-size:15px;color:#333;">'
+            f'🤖 <b>Model confidence:</b> {svm_confidence*100:.1f}%'
+            f'</div>'
+        )
+        source_note = "Predicted by SVM classifier"
+    else:
+        conf_html = ""
+        source_note = "Based on rule-based analysis"
+
+    st.markdown(
+        f'<div class="stress-type-box">'
+        f'<div style="font-size:72px;margin:10px 0;">{stress_type_emoji}</div>'
+        f'<div class="stress-level {stress_type_class}" style="font-size:32px;">{stress_type}</div>'
+        f'{conf_html}'
+        f'<div style="margin-top:12px;font-size:14px;color:#888;">{source_note}</div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )F
+
+
+# ---------- SVM Probability Breakdown Chart ----------
+if svm_probabilities:
+    st.markdown("### 📊 Prediction Confidence Breakdown")
+    
+    prob_df = pd.DataFrame({
+        'Stress Type': list(svm_probabilities.keys()),
+        'Probability': [v * 100 for v in svm_probabilities.values()]
+    })
+    
+    color_map = {
+        'Distress':  '#F44336',
+        'Eustress':  '#2196F3',
+        'No Stress': '#4CAF50',
+    }
+    
+    fig_prob = go.Figure(go.Bar(
+        x=prob_df['Stress Type'],
+        y=prob_df['Probability'],
+        marker_color=[color_map.get(c, '#999') for c in prob_df['Stress Type']],
+        text=[f"{p:.1f}%" for p in prob_df['Probability']],
+        textposition='auto'
+    ))
+    fig_prob.update_layout(
+        yaxis_title="Probability (%)",
+        yaxis=dict(range=[0, 100]),
+        height=300,
+        margin=dict(l=20, r=20, t=30, b=20),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        showlegend=False
+    )
+    st.plotly_chart(fig_prob, use_container_width=True)
+    
+    if svm_confidence is not None and svm_confidence < 0.6:
+        st.warning(
+            f"⚠️ Model confidence is only {svm_confidence*100:.1f}%. "
+            "Your responses span multiple stress patterns. "
+            "Consider retaking the test or consulting a professional."
+        )
+
 
 # Stress Type Descriptions
 st.markdown("### 📖 Understanding Your Stress Type")
@@ -1019,7 +1107,7 @@ with col2:
     pdf_buffer = generate_pdf_report(
         gender, gender_code, age, answers, question_texts, categories,
         total_score, percentage, stress_level, stress_type,
-        category_scores, top_stress_areas
+        category_scores, top_stress_areas, svm_confidence=svm_confidence
     )
     
     st.download_button(

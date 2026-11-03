@@ -1,0 +1,4 @@
+_HERE = os.path.dirname(os.path.abspath(__file__))       # .../project/utils
+_PROJECT_ROOT = os.path.dirname(_HERE)                    # .../project
+MODEL_PATH = os.path.join(_PROJECT_ROOT, 'models', 'svm_stress_model.pkl')
+META_PATH  = os.path.join(_PROJECT_ROOT, 'models', 'svm_model_metadata.jso

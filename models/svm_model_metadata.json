@@ -1,0 +1,42 @@
+{
+  "model_name": "SVM",
+  "kernel": "linear",
+  "C": "1",
+  "feature_cols": [
+    "gender",
+    "age",
+    "recent_stress",
+    "heart_palpitations",
+    "anxiety_severity",
+    "sleep_problems",
+    "anxiety_frequency",
+    "headaches",
+    "irritability",
+    "concentration_issues",
+    "sadness",
+    "health_issues",
+    "loneliness",
+    "academic_overwhelm",
+    "peer_competition",
+    "relationship_stress",
+    "professor_difficulties",
+    "work_environment_stress",
+    "relaxation_time",
+    "home_stress",
+    "academic_confidence",
+    "subject_confidence",
+    "activity_conflict",
+    "class_attendance",
+    "weight_change"
+  ],
+  "n_features": 25,
+  "classes": [
+    "Distress",
+    "Eustress",
+    "No Stress"
+  ],
+  "accuracy": 0.9823008849557522,
+  "f1_weighted": 0.9823008849557522,
+  "f1_macro": 0.9412081984897519,
+  "trained_on": "2026-10-12 10:20"
+}
