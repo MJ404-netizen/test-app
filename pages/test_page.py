@@ -63,12 +63,11 @@ hide_streamlit_style = f"""
         .welcome-subtitle {{ font-size: 24px; color: #2E7D32; margin-top: 10px; }}
         .user-greeting {{ font-size: 28px; color: #1B5E20; font-weight: 600; margin: 20px 0; }}
 
-        /* General Button Styling */
+        /* ---------- GENERAL ACTION BUTTONS (Start Test & View History) ---------- */
         div[data-testid="stHorizontalBlock"] div.stButton > button {{
             width: 100% !important;
             border-radius: 60px !important;
-            padding: 20px 20px !important;
-            font-size: 22px !important;
+            padding: 15px 20px !important;
             font-weight: 600 !important;
             border: none !important;
             cursor: pointer !important;
@@ -76,27 +75,37 @@ hide_streamlit_style = f"""
             text-align: center !important;
             font-family: inherit !important;
             line-height: 1.4 !important;
-            min-height: 65px !important;
-        }}
-
-        div[data-testid="stHorizontalBlock"] div.stButton > button[kind="primary"] {{
-            background: #4CAF50 !important;
+            min-height: 60px !important;
+            margin-top: 15px !important;
+            background: #4CAF50 !important; /* Green for all */
             color: white !important;
         }}
-        div[data-testid="stHorizontalBlock"] div.stButton > button[kind="primary"]:hover {{
+
+        /* TARGET THE TEXT INSIDE THE BUTTONS TO MATCH CLEAR HISTORY */
+        div[data-testid="stHorizontalBlock"] div.stButton > button p {{
+            font-size: 24px !important; 
+            font-weight: 700 !important;
+            color: white !important;
+            margin: 0 !important;
+        }}
+
+        div[data-testid="stHorizontalBlock"] div.stButton > button:hover {{
             background: #43A047 !important;
             box-shadow: 0 14px 34px rgba(76, 175, 80, 0.40) !important;
-            transform: translateY(-3px);
-        }}
-
-        div[data-testid="stHorizontalBlock"] div.stButton > button:not([kind="primary"]) {{
-            background: #2196F3 !important;
+            transform: translateY(-3px) !important;
             color: white !important;
         }}
-        div[data-testid="stHorizontalBlock"] div.stButton > button:not([kind="primary"]):hover {{
-            background: #1976D2 !important;
-            box-shadow: 0 14px 34px rgba(33, 150, 243, 0.40) !important;
-            transform: translateY(-3px);
+
+        /* Disabled Button State */
+        div[data-testid="stHorizontalBlock"] div.stButton > button:disabled {{
+            background: #A5D6A7 !important;
+            color: #E8F5E9 !important;
+            cursor: not-allowed !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }}
+        div[data-testid="stHorizontalBlock"] div.stButton > button:disabled p {{
+            color: #E8F5E9 !important;
         }}
 
         /* ---------- FORCE NAVIGATION TO ABSOLUTE CORNERS ---------- */
@@ -313,10 +322,21 @@ if history:
         )
 
     with col3:
-        percentage = latest.get("percentage", 0)
+        # Changed from "Latest Score" to "Latest Confidence"
+        svm_confidence = latest.get("svm_confidence", 0)
+        
+        # Handle cases where confidence might be stored as a string or missing
+        if isinstance(svm_confidence, (int, float)):
+            if svm_confidence <= 1.0 and svm_confidence > 0:
+                conf_display = f"{svm_confidence * 100:.1f}%"
+            else:
+                conf_display = f"{svm_confidence:.1f}%"
+        else:
+            conf_display = "N/A"
+            
         st.metric(
-            "Latest Score",
-            f"{percentage:.1f}%"
+            "Latest Confidence",
+            conf_display
         )
 
     with col4:
@@ -329,7 +349,7 @@ if history:
 
     st.info(
         f"💡 Your last test on **{latest.get('date', 'N/A')}** "
-        f"showed **{latest.get('stress_type', 'N/A')}**"
+        f"showed **{latest.get('stress_type', 'N/A')}** with **{conf_display}** confidence."
     )
 
 else:

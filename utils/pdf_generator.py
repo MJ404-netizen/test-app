@@ -5,19 +5,13 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from io import BytesIO
-from datetime import datetime
 
 def generate_pdf_report(gender, gender_code, age, answers, question_texts, categories, 
                         total_score, percentage, stress_type, 
-                        category_scores, top_stress_areas, svm_confidence=None):
-    """Generate PDF report using reportlab"""
+                        category_scores, top_stress_areas, svm_confidence=None, generated_time="Unknown"):
     
     buffer = BytesIO()
-    # Use 30pt margins to give us max horizontal space
-    doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                           rightMargin=30, leftMargin=30, 
-                           topMargin=72, bottomMargin=40)
-    
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=72, bottomMargin=40)
     styles = getSampleStyleSheet()
     story = []
     
@@ -27,7 +21,7 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
     story.append(Spacer(1, 12))
     
     date_style = ParagraphStyle('DateStyle', parent=styles['Normal'], fontSize=10, textColor=colors.grey, alignment=TA_CENTER)
-    story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", date_style))
+    story.append(Paragraph(f"Generated: {generated_time}", date_style))
     story.append(Spacer(1, 20))
     
     # --- User Information ---
@@ -138,20 +132,67 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
         story.append(Paragraph(f"• {rec}", styles['Normal']))
         story.append(Spacer(1, 6))
     story.append(Spacer(1, 20))
+
+    # --- Specific Recommendations for Top Stress Areas ---
+    if top_stress_areas:
+        specific_tips_html = ""
+        shown_tips = set()
+        for item in top_stress_areas[:3]:
+            q_lower = item["question"].lower()
+            if "sleep" in q_lower and "sleep" not in shown_tips: 
+                specific_tips_html += "<li><b>Sleep Tips:</b> Maintain a consistent sleep schedule.</li>"
+                shown_tips.add("sleep")
+            elif ("anxiety" in q_lower or "tension" in q_lower) and "anxiety" not in shown_tips: 
+                specific_tips_html += "<li><b>Anxiety Management:</b> Practice deep breathing exercises.</li>"
+                shown_tips.add("anxiety")
+            elif ("competition" in q_lower or "peers" in q_lower) and "competition" not in shown_tips: 
+                specific_tips_html += "<li><b>Peer Competition:</b> Focus on your personal growth.</li>"
+                shown_tips.add("competition")
+            elif ("academic" in q_lower or "workload" in q_lower or "classes" in q_lower) and "academic" not in shown_tips: 
+                specific_tips_html += "<li><b>Academic Stress:</b> Break tasks into smaller chunks.</li>"
+                shown_tips.add("academic")
+            elif "relationship" in q_lower and "relationship" not in shown_tips: 
+                specific_tips_html += "<li><b>Relationships:</b> Communicate openly.</li>"
+                shown_tips.add("relationship")
+            elif ("confidence" in q_lower or "performance" in q_lower) and "confidence" not in shown_tips: 
+                specific_tips_html += "<li><b>Building Confidence:</b> Celebrate small wins.</li>"
+                shown_tips.add("confidence")
+            elif ("health" in q_lower or "illness" in q_lower) and "health" not in shown_tips: 
+                specific_tips_html += "<li><b>Health Concerns:</b> Schedule a check-up.</li>"
+                shown_tips.add("health")
+            elif ("lonely" in q_lower or "isolated" in q_lower) and "lonely" not in shown_tips: 
+                specific_tips_html += "<li><b>Social Connection:</b> Join a club or group activity.</li>"
+                shown_tips.add("lonely")
+            elif ("environment" in q_lower or "hostel" in q_lower or "working" in q_lower) and "environment" not in shown_tips: 
+                specific_tips_html += "<li><b>Environment:</b> Create a comfortable workspace.</li>"
+                shown_tips.add("environment")
+            elif ("heartbeat" in q_lower or "palpitations" in q_lower) and "heartbeat" not in shown_tips: 
+                specific_tips_html += "<li><b>Physical Symptoms:</b> Practice deep breathing.</li>"
+                shown_tips.add("heartbeat")
+            elif "irritated" in q_lower and "irritated" not in shown_tips: 
+                specific_tips_html += "<li><b>Irritability:</b> Practice mindfulness.</li>"
+                shown_tips.add("irritated")
+            elif ("extracurricular" in q_lower or "activities" in q_lower) and "activities" not in shown_tips: 
+                specific_tips_html += "<li><b>Work-Life Balance:</b> Prioritize activities.</li>"
+                shown_tips.add("activities")
+            elif "weight" in q_lower and "weight" not in shown_tips: 
+                specific_tips_html += "<li><b>Weight Management:</b> Consult a nutritionist.</li>"
+                shown_tips.add("weight")
+            
+        if specific_tips_html:
+            story.append(Paragraph("Specific Recommendations for Your Top Stress Areas", styles['Heading2']))
+            story.append(Spacer(1, 10))
+            
+            # Wrapping the tips in a list format for the PDF
+            story.append(Paragraph(f"<ul>{specific_tips_html}</ul>", styles['Normal']))
+            story.append(Spacer(1, 20))
     
     # --- Detailed Responses ---
     story.append(PageBreak())
     story.append(Paragraph("Detailed Responses", styles['Heading1']))
     story.append(Spacer(1, 10))
     
-    # Create a specific style for the table cells
-    cell_style = ParagraphStyle(
-        'TableCell', 
-        parent=styles['Normal'], 
-        fontSize=8,       
-        leading=12,       
-        alignment=TA_LEFT
-    )
+    cell_style = ParagraphStyle('TableCell', parent=styles['Normal'], fontSize=8, leading=12, alignment=TA_LEFT)
     
     answer_data = [
         [
@@ -164,15 +205,20 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
     ]
     
     for q_id, answer in sorted(answers.items()):
-        if q_id >= 3:
+        # Safely convert q_id to int to prevent the TypeError
+        try:
+            q_id_int = int(q_id)
+        except ValueError:
+            continue # Skip if it's not a valid number
+
+        if q_id_int >= 3:
             category_name = "Other"
             for cat_name, cat_data in categories.items():
-                if q_id in cat_data["ids"]:
+                if q_id_int in cat_data["ids"]:
                     category_name = cat_name.split()[1] if len(cat_name.split()) > 1 else cat_name
                     break
             
-            # 1. FULL text, no truncation
-            question_text = str(question_texts.get(q_id, f"Q{q_id}")).replace("\n", " ").replace("\t", " ").strip()
+            question_text = str(question_texts.get(q_id_int, f"Q{q_id_int}")).replace("\n", " ").replace("\t", " ").strip()
             answer_text = str(answer).replace("\n", " ").replace("\t", " ").strip()
             
             try:
@@ -180,16 +226,14 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
             except:
                 score = "-"
             
-            # 2. Wrap in Paragraph
             answer_data.append([
-                Paragraph(str(q_id), cell_style),
+                Paragraph(str(q_id_int), cell_style),
                 Paragraph(category_name, cell_style),
                 Paragraph(question_text, cell_style), 
                 Paragraph(str(score), cell_style),
                 Paragraph(answer_text, cell_style)
             ])
     
-    # 3. NO rowHeights. Dynamic wrapping with wider Question column (3.8 inches)
     answer_table = Table(answer_data, colWidths=[0.4*inch, 0.9*inch, 3.8*inch, 0.5*inch, 1.85*inch])
     
     answer_table.setStyle(TableStyle([
@@ -209,13 +253,11 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
     ]))
     story.append(answer_table)
     
-    # --- Footer ---
     footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER)
     story.append(Spacer(1, 30))
     story.append(Paragraph("This report is for informational purposes only.", footer_style))
     story.append(Paragraph("If you're experiencing severe stress, please consult a mental health professional.", footer_style))
     
-    # Build PDF
     doc.build(story)
     buffer.seek(0)
     return buffer

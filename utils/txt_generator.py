@@ -1,14 +1,12 @@
-from datetime import datetime
-
 def generate_txt_report(gender, gender_code, age, answers, question_texts, categories,
                         total_score, percentage, stress_type,
-                        category_scores, top_stress_areas):
+                        category_scores, top_stress_areas, generated_time="Unknown"):
     """Generate TXT report"""
-    
+        
     report = f"""
 STRESS TEST REPORT
 ===================
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Generated: {generated_time}
 
 Personal Information:
 - Gender: {gender} (Code: {gender_code})
@@ -24,7 +22,6 @@ Stress Breakdown by Category:
     for category, score in category_scores.items():
         report += f"\n  {category}: {score:.1f}/5"
     
-    # Top 5 Stress Areas
     if top_stress_areas:
         report += "\n\nTop 5 Stress Areas:"
         report += "\nHere are your top stress areas that may need attention:"
@@ -32,7 +29,6 @@ Stress Breakdown by Category:
             report += f"\n  {i}. {item['question']}"
             report += f"\n     {item['category']} • Score: {item['score']}/5 - {item['level']} Level"
     
-    # Full Personalized Recommendations (Matches the UI)
     report += "\n\nPersonalized Recommendations:\n"
     if stress_type == "Eustress":
         report += "  • Self care: Prioritize self-care activities to maintain well-being and prevent eustress from turning into distress\n"
@@ -56,7 +52,6 @@ Stress Breakdown by Category:
         report += "  • Practice gratitude: Appreciate your current balanced state\n"
         report += "  • Plan ahead: Set goals that will keep you motivated and fulfilled\n"
         
-    # Specific Recommendations for Top Areas
     if top_stress_areas:
         specific_tips_txt = ""
         shown_tips = set()
@@ -108,7 +103,15 @@ Stress Breakdown by Category:
     
     report += "\n\nDetailed Answers:\n"
     for q_id, answer in sorted(answers.items()):
-        if q_id >= 3:
+        # Safely convert q_id to int to prevent the TypeError
+        try:
+            q_id_int = int(q_id)
+        except ValueError:
+            continue
+
+        if q_id_int >= 3:
+            q_text = question_texts.get(q_id_int, f"Q{q_id_int}")
+            report += f"\nQ{q_id_int}: {q_text}\n  Answer: {answer}\n"
             q_text = question_texts.get(q_id, f"Q{q_id}")
             report += f"\nQ{q_id}: {q_text}\n  Answer: {answer}\n"
     

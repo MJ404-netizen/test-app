@@ -12,7 +12,7 @@ from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from io import BytesIO
 import base64
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import json
 import os
 from utils.txt_generator import generate_txt_report
@@ -46,7 +46,7 @@ hide_streamlit_style = f"""
         
         /* --- PUSH CONTENT LOWER --- */
         .block-container {{
-            padding-top: 5rem !important; /* Increased to push the context lower */
+            padding-top: 5rem !important; 
             padding-bottom: 2rem !important;
         }}
         .stApp > header {{
@@ -119,7 +119,7 @@ hide_streamlit_style = f"""
             display: flex !important;
             justify-content: space-between !important;
             align-items: center !important;
-            margin-top: -3rem !important; /* Adjusted so buttons move lower but stay safe */
+            margin-top: -3rem !important; 
             margin-bottom: 2rem !important;
         }}
 
@@ -263,7 +263,7 @@ def get_question_mapping():
 
 # ---------- ANALYZE RESPONSES ----------
 def calculate_stress_score(answers):
-    stress_answers = {k: v for k, v in answers.items() if k >= 3}
+    stress_answers = {int(k): v for k, v in answers.items() if int(k) >= 3}
     if not stress_answers: return 0, 0
     scores = []
     for answer in stress_answers.values():
@@ -277,6 +277,7 @@ def calculate_stress_score(answers):
     return total_score, percentage
 
 def calculate_stress_type(answers, categories):
+    answers = {int(k): v for k, v in answers.items()}
     category_scores = {}
     for category_name, category_data in categories.items():
         scores = []
@@ -301,6 +302,7 @@ def calculate_stress_type(answers, categories):
     else: return "Distress", "stress-distress", "😰"
 
 def calculate_category_scores(answers, categories):
+    answers = {int(k): v for k, v in answers.items()}
     category_scores, category_details = {}, {}
     for category_name, category_data in categories.items():
         scores = []
@@ -317,6 +319,7 @@ def calculate_category_scores(answers, categories):
     return category_scores, category_details
 
 def get_top_stress_areas(answers, categories, question_texts):
+    answers = {int(k): v for k, v in answers.items()}
     stress_items = []
     for category_name, category_data in categories.items():
         for q_id in category_data["ids"]:
@@ -329,7 +332,7 @@ def get_top_stress_areas(answers, categories, question_texts):
     stress_items.sort(key=lambda x: x["score"], reverse=True)
     return stress_items[:5]
 
-def save_test_history(answers, gender, gender_code, age, stress_type, percentage):
+def save_test_history(answers, gender, gender_code, age, stress_type, percentage, svm_confidence, category_scores, top_stress_areas, svm_probabilities):
     username = st.session_state.get("username", "default")
     history_file = f"user_history_{username}.json"
     history = []
@@ -337,9 +340,28 @@ def save_test_history(answers, gender, gender_code, age, stress_type, percentage
         try:
             with open(history_file, 'r') as f: history = json.load(f)
         except: history = []
-    entry = {"date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "gender": gender, "gender_code": gender_code, "age": age, "stress_type": stress_type, "percentage": percentage, "answers": answers, "total_questions": len(answers)}
+        
+    utc_now = datetime.now(timezone.utc)
+    my_time = utc_now + timedelta(hours=8)
+    current_time = my_time.strftime("%Y-%m-%d %H:%M:%S")
+    
+    entry = {
+        "date": current_time, 
+        "gender": gender, 
+        "gender_code": gender_code, 
+        "age": age, 
+        "stress_type": stress_type, 
+        "percentage": percentage, 
+        "svm_confidence": svm_confidence,
+        "svm_probabilities": svm_probabilities,
+        "category_scores": category_scores,
+        "top_stress_areas": top_stress_areas,
+        "answers": answers, 
+        "total_questions": len(answers)
+    }
+    
     history.insert(0, entry)
-    history = history[:50]
+    history = history[:100]
     with open(history_file, 'w') as f: json.dump(history, f, indent=2)
     return entry
 
@@ -347,33 +369,48 @@ def save_test_history(answers, gender, gender_code, age, stress_type, percentage
 question_texts, categories = get_question_mapping()
 
 # ---------- CALCULATE RESULTS ----------
-total_score, percentage = calculate_stress_score(answers)
-svm_confidence = None
-svm_probabilities = None
-svm_error = None
+if st.session_state.get("viewing_history", False):
+    total_score = 0 
+    percentage = st.session_state.get("saved_percentage", 0)
+    stress_type = st.session_state.get("saved_stress_type", "No Stress")
+    svm_confidence = st.session_state.get("saved_svm_confidence", None)
+    svm_probabilities = st.session_state.get("saved_svm_probabilities", None)
+    category_scores = st.session_state.get("saved_category_scores", {})
+    top_stress_areas = st.session_state.get("saved_top_stress_areas", [])
+    
+    _, category_details = calculate_category_scores(answers, categories)
+else:
+    total_score, percentage = calculate_stress_score(answers)
+    svm_confidence = None
+    svm_probabilities = None
+    svm_error = None
 
-try:
-    svm_output = predict_stress_type(answers=answers, gender_code=gender_code, age=age)
-    stress_type, svm_confidence, svm_probabilities = svm_output['type'], svm_output['confidence'], svm_output['probabilities']
-except Exception as e:
-    svm_error = str(e)
-    stress_type, _, _ = calculate_stress_type(answers, categories)
+    try:
+        svm_output = predict_stress_type(answers=answers, gender_code=gender_code, age=age)
+        stress_type, svm_confidence, svm_probabilities = svm_output['type'], svm_output['confidence'], svm_output['probabilities']
+    except Exception as e:
+        svm_error = str(e)
+        stress_type, _, _ = calculate_stress_type(answers, categories)
+
+    category_scores, category_details = calculate_category_scores(answers, categories)
+    top_stress_areas = get_top_stress_areas(answers, categories, question_texts)
+
+    if svm_error: st.warning(f"⚠️ SVM model unavailable — using rule-based fallback. ({svm_error})")
 
 STRESS_TYPE_STYLE = {"Eustress": ("stress-eustress", "💪"), "Distress": ("stress-distress", "😰"), "No Stress": ("stress-no-stress", "😌")}
 stress_type_class, stress_type_emoji = STRESS_TYPE_STYLE.get(stress_type, ("stress-no-stress", "😌"))
 
-if svm_error: st.warning(f"⚠️ SVM model unavailable — using rule-based fallback. ({svm_error})")
-
-category_scores, category_details = calculate_category_scores(answers, categories)
-top_stress_areas = get_top_stress_areas(answers, categories, question_texts)
-
 should_save = not st.session_state.get("viewing_history", False) and not st.session_state.get("history_saved", False)
 if should_save:
-    save_test_history(answers, gender, gender_code, age, stress_type, percentage)
+    save_test_history(answers, gender, gender_code, age, stress_type, percentage, svm_confidence, category_scores, top_stress_areas, svm_probabilities)
     st.session_state.history_saved = True
 
+utc_now = datetime.now(timezone.utc)
+my_time = utc_now + timedelta(hours=8)
+file_date_str = my_time.strftime('%Y%m%d')
+current_time_str = my_time.strftime("%Y-%m-%d %H:%M") 
+
 # ---------- DISPLAY RESULTS ----------
-# Row 1: User Info
 st.markdown(f"""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #4CAF50; margin-top: 15px; padding: 25px;">
 <h3 style="margin-top: 0; color: #000000; text-align: left; margin-bottom: 20px;">👤 User Information</h3>
 <div style="display: flex; justify-content: space-between; width: 100%;">
@@ -383,7 +420,6 @@ st.markdown(f"""<div class="recommendation-box" style="background: #FFFFFF; bord
 <div style="flex: 1;"><div style="font-size: 14px; color: #666; margin-bottom: 5px;">Questions Answered</div><div style="font-size: 28px; font-weight: 600; color: #333;">{len(answers)}</div></div>
 </div></div>""", unsafe_allow_html=True)
 
-# Row 2: Stress Type Classification
 if svm_confidence is not None:
     conf_html = f'<div style="margin-top:15px;font-size:16px;color:#333;">🤖 <b>Model confidence:</b> {svm_confidence*100:.1f}%</div>'
     source_note = "Predicted by SVM classifier"
@@ -407,7 +443,6 @@ if svm_probabilities:
     if svm_confidence is not None and svm_confidence < 0.6:
         st.warning(f"⚠️ Model confidence is only {svm_confidence*100:.1f}%. Your responses span multiple stress patterns. Consider retaking the test or consulting a professional.")
 
-# Stress Type Descriptions
 if stress_type == "Eustress":
     st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #0D47A1;"><h3>💪 Eustress - The "Good" Stress</h3><p><strong>What it means: You're experiencing positive, motivating stress that helps you perform at your best.</strong></p><ul><li>You feel challenged but capable</li><li>This stress helps you focus and achieve goals</li><li>You're engaged and motivated</li><li>Your physical health indicators are generally good</li></ul></div>""", unsafe_allow_html=True)
 elif stress_type == "Distress":
@@ -415,7 +450,6 @@ elif stress_type == "Distress":
 else:
     st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #1B5E20;"><h3>😌 No Stress - The Calm State</h3><p><strong>What it means: You're experiencing very low levels of stress in your life.</strong></p><ul><li>You feel calm and balanced</li><li>You're managing daily challenges well</li><li>Your physical and emotional health are stable</li><li>You have good coping mechanisms</li></ul></div>""", unsafe_allow_html=True)
 
-# Row 5: Category Scores (Container Removed)
 if category_scores:
     st.markdown("### 📊 Stress Breakdown by Category")
     col1, col2, col3 = st.columns([1, 6, 1])
@@ -430,14 +464,12 @@ if category_scores:
         df_details = pd.DataFrame([{"Category": name, "Average Score": f"{d['average']:.1f}", "Highest Score": d['max'], "Lowest Score": d['min'], "Questions": d['count']} for name, d in category_details.items()])
         st.dataframe(df_details, use_container_width=True, hide_index=True)
 
-# Row 6: Top Stress Areas
 if top_stress_areas:
     areas_html = "".join([f'<div style="display: flex; align-items: flex-start; gap: 15px; padding: 12px 0; margin-bottom: 5px;"><div style="font-size: 24px; margin-top: 2px;">{"🔴" if item["level"] == "High" else "🟠"}</div><div style="flex: 1;"><div style="font-weight: 600; font-size: 16px; color: #333;">{item["question"]}</div><div style="font-size: 14px; color: #666; margin-top: 4px;">{item["category"]} • Score: {item["score"]}/5 - {item["level"]} Level</div></div></div>' for item in top_stress_areas])
     st.markdown(f"""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #F44336; margin-top: 15px;"><h3 style="margin-top: 0; color: #000000;">🎯 Top Stress Areas</h3><p style="color: #666; margin-bottom: 15px;">Here are your top stress areas that may need attention:</p>{areas_html}</div>""", unsafe_allow_html=True)
 else:
     st.info("✅ No high-stress areas identified. Keep up the good work!")
 
-# Row 7: Recommendations
 if stress_type == "Eustress":
     st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #0D47A1;">
     <h3 style="margin-top: 0; color: #000000;">💡 Personalized Recommendations</h3>
@@ -499,13 +531,17 @@ if top_stress_areas:
 
 # Row 8: Detailed Response Summary
 response_data = []
-for q_id, answer in sorted(answers.items()):
-    if q_id >= 3:
-        category_name = next((cat for cat, data in categories.items() if q_id in data["ids"]), "Other")
-        question_text = question_texts.get(q_id, f"Q{q_id}")
+# Force ascending order by converting keys to integers for sorting
+sorted_answers = sorted(answers.items(), key=lambda x: int(x[0]))
+
+for q_id, answer in sorted_answers:
+    q_id_int = int(q_id)
+    if q_id_int >= 3:
+        category_name = next((cat for cat, data in categories.items() if q_id_int in data["ids"]), "Other")
+        question_text = question_texts.get(q_id_int, f"Q{q_id_int}")
         try: score = int(answer.split(" - ")[0])
         except: score = "-"
-        response_data.append({"Question ID": q_id, "Category": category_name, "Question": question_text[:60] + ("..." if len(question_text) > 60 else ""), "Score": score, "Response": answer})
+        response_data.append({"Question ID": q_id_int, "Category": category_name, "Question": question_text[:60] + ("..." if len(question_text) > 60 else ""), "Score": score, "Response": answer})
 
 if response_data:
     st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #FF9800; margin-top: 15px; padding-bottom: 5px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0;"><h3 style="margin-top: 0; color: #000000; text-align: left; margin-bottom: 10px;">📝 Detailed Response Summary</h3></div>""", unsafe_allow_html=True)
@@ -514,33 +550,68 @@ if response_data:
         with st.expander("View All Responses"):
             df_responses = pd.DataFrame(response_data)
             st.dataframe(df_responses, use_container_width=True, hide_index=True, column_config={"Question ID": st.column_config.NumberColumn("Q#"), "Category": st.column_config.TextColumn("Category"), "Question": st.column_config.TextColumn("Question"), "Score": st.column_config.NumberColumn("Score (1-5)"), "Response": st.column_config.TextColumn("Your Answer")})
-
+            
 # Row 9: Action Buttons
 st.write("")
 
-col1, col2, col3, col4 = st.columns([1, 5, 1, 1])
+# Check if viewing history to hide retake button and align downloads
+is_viewing_history = st.session_state.get("viewing_history", False)
 
-with col1:
-    if st.button("🔄 Retake Test", use_container_width=True):
-        st.session_state.current_q_index = 0
-        st.session_state.answers = {}
-        st.session_state.user_responses = {}
-        st.session_state.formatted_answers = {}
-        st.session_state.test_completed = False
-        st.session_state.gender = None
-        st.session_state.gender_code = None
-        st.session_state.age = None
-        st.session_state.viewing_history = False
-        st.session_state.history_saved = False
-        st.switch_page("pages/test_questions.py")
+if is_viewing_history:
+    # Align Download Buttons to the right side
+    col1, col2, col3, col4 = st.columns([1, 5, 1, 1])
+    
+    with col3:
+        pdf_buffer = generate_pdf_report(
+            gender, gender_code, age, answers, question_texts, categories, 
+            total_score, percentage, stress_type, category_scores, top_stress_areas, 
+            svm_confidence,
+            current_time_str
+        )
+        st.download_button(label="📄 Download PDF", data=pdf_buffer, file_name=f"stress_test_report_{age}_{gender}_{file_date_str}.pdf", mime="application/pdf", use_container_width=True, type="primary")
 
-with col3:
-    pdf_buffer = generate_pdf_report(gender, gender_code, age, answers, question_texts, categories, total_score, percentage, stress_type, category_scores, top_stress_areas, svm_confidence=svm_confidence)
-    st.download_button(label="📄 Download PDF", data=pdf_buffer, file_name=f"stress_test_report_{age}_{gender}_{datetime.now().strftime('%Y%m%d')}.pdf", mime="application/pdf", use_container_width=True, type="primary")
+    with col4:
+        txt_report = generate_txt_report(
+            gender, gender_code, age, answers, question_texts, categories, 
+            total_score, percentage, stress_type, category_scores, top_stress_areas,
+            current_time_str
+        )
+        st.download_button(label="📄 Download TXT", data=txt_report, file_name=f"stress_test_report_{age}_{gender}_{file_date_str}.txt", mime="text/plain", use_container_width=True)
 
-with col4:
-    txt_report = generate_txt_report(gender, gender_code, age, answers, question_texts, categories, total_score, percentage, stress_type, category_scores, top_stress_areas)
-    st.download_button(label="📄 Download TXT", data=txt_report, file_name=f"stress_test_report_{age}_{gender}.txt", mime="text/plain", use_container_width=True)
+else:
+    # Original Layout with Retake Button
+    col1, col2, col3, col4 = st.columns([1, 5, 1, 1])
+    
+    with col1:
+        if st.button("🔄 Retake Test", use_container_width=True):
+            st.session_state.current_q_index = 0
+            st.session_state.answers = {}
+            st.session_state.user_responses = {}
+            st.session_state.formatted_answers = {}
+            st.session_state.test_completed = False
+            st.session_state.gender = None
+            st.session_state.gender_code = None
+            st.session_state.age = None
+            st.session_state.viewing_history = False
+            st.session_state.history_saved = False
+            st.switch_page("pages/test_questions.py")
+
+    with col3:
+        pdf_buffer = generate_pdf_report(
+            gender, gender_code, age, answers, question_texts, categories, 
+            total_score, percentage, stress_type, category_scores, top_stress_areas, 
+            svm_confidence,
+            current_time_str
+        )
+        st.download_button(label="📄 Download PDF", data=pdf_buffer, file_name=f"stress_test_report_{age}_{gender}_{file_date_str}.pdf", mime="application/pdf", use_container_width=True, type="primary")
+
+    with col4:
+        txt_report = generate_txt_report(
+            gender, gender_code, age, answers, question_texts, categories, 
+            total_score, percentage, stress_type, category_scores, top_stress_areas,
+            current_time_str
+        )
+        st.download_button(label="📄 Download TXT", data=txt_report, file_name=f"stress_test_report_{age}_{gender}_{file_date_str}.txt", mime="text/plain", use_container_width=True)
 
 # ---------- FOOTER ----------
 st.markdown(

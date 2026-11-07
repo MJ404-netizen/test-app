@@ -27,7 +27,6 @@ hide_streamlit_style = f"""
         footer {{visibility: hidden;}}
         header {{visibility: hidden;}}
 
-        /* Remove top spacing so the arrow can sit in the true corner */
         .block-container {{
             padding-top: 0rem !important;
             padding-bottom: 2rem !important;
@@ -79,10 +78,12 @@ hide_streamlit_style = f"""
             color: #666;
         }}
         
+        /* ---------- STANDARD BUTTONS (View Results) ---------- */
         .stButton button {{
             border-radius: 12px !important;
             padding: 10px 25px !important;
             font-weight: 600 !important;
+            font-size: 18px !important; 
             transition: all 0.25s ease !important;
         }}
         
@@ -93,6 +94,39 @@ hide_streamlit_style = f"""
         .stButton button[kind="primary"]:hover {{
             background: #43A047 !important;
             transform: translateY(-2px);
+        }}
+
+        /* ---------- CLEAR HISTORY & TAKE FIRST TEST BUTTONS ---------- */
+        .st-key-clear_history_btn button,
+        .st-key-take_first_test_btn button {{
+            width: 100% !important;
+            border-radius: 60px !important;
+            padding: 15px 20px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: all 0.25s ease !important;
+            text-align: center !important;
+            min-height: 60px !important;
+            background: #4CAF50 !important;
+            color: white !important;
+            margin-top: 15px !important;
+        }}
+
+        .st-key-clear_history_btn button p,
+        .st-key-take_first_test_btn button p {{
+            font-size: 24px !important; 
+            font-weight: 700 !important;
+            color: white !important;
+            margin: 0 !important;
+        }}
+
+        .st-key-clear_history_btn button:hover,
+        .st-key-take_first_test_btn button:hover {{
+            background: #43A047 !important;
+            box-shadow: 0 14px 34px rgba(76, 175, 80, 0.40) !important;
+            transform: translateY(-3px) !important;
+            color: white !important;
         }}
 
         /* ---------- PIN BACK ARROW TO TOP-LEFT CORNER ---------- */
@@ -185,10 +219,12 @@ if history:
     for idx, entry in enumerate(history):
         date = entry.get("date", "Unknown date")
         stress_type = entry.get("stress_type", "No Data")
-        percentage = entry.get("percentage", 0)
         total_q = entry.get("total_questions", 0)
         age = entry.get("age", "N/A")
         gender = entry.get("gender", "N/A")
+        
+        # Get Model Confidence (Fallback to percentage if svm_confidence doesn't exist in old records)
+        svm_confidence = entry.get("svm_confidence", entry.get("percentage", 0))
         
         # Determine emoji and color
         if stress_type == "Eustress":
@@ -201,6 +237,12 @@ if history:
             emoji = "😌"
             border_color = "#1B5E20"
         
+        # Format Confidence (Check if it's a decimal like 0.855 or a whole number like 85.5)
+        if svm_confidence <= 1.0 and svm_confidence > 0:
+            conf_display = f"{svm_confidence * 100:.1f}%"
+        else:
+            conf_display = f"{svm_confidence:.1f}%"
+
         # History item
         st.markdown(f"""
             <div class="history-item" style="border-left-color: {border_color};">
@@ -209,8 +251,9 @@ if history:
                         <div class="history-stress-type">{emoji} {stress_type}</div>
                         <div class="history-date">📅 {date}</div>
                     </div>
-                    <div>
-                        <span style="color: #666; font-weight: 600;">{percentage:.1f}%</span>
+                    <div style="text-align: right;">
+                        <span style="color: #666; font-weight: 600; display: block; font-size: 14px;">🤖 AI Confidence</span>
+                        <span style="color: #333; font-weight: 700; font-size: 18px;">{conf_display}</span>
                     </div>
                 </div>
                 <div style="margin-top: 10px; font-size: 14px; color: #888;">
@@ -223,19 +266,29 @@ if history:
         col1, col2, col3 = st.columns([1, 1, 4])
         with col1:
             if st.button(f"📊 View Results", key=f"view_{idx}", use_container_width=True):
+                # Load answers and demographics
                 st.session_state.answers = entry.get("answers", {})
                 st.session_state.gender = entry.get("gender")
                 st.session_state.gender_code = entry.get("gender_code")
                 st.session_state.age = entry.get("age")
+                
+                # Load the saved snapshot data to bypass recalculation
+                st.session_state.saved_percentage = entry.get("percentage", 0)
+                st.session_state.saved_svm_confidence = entry.get("svm_confidence", None)
+                st.session_state.saved_svm_probabilities = entry.get("svm_probabilities", None)
+                st.session_state.saved_stress_type = entry.get("stress_type", "No Stress")
+                st.session_state.saved_category_scores = entry.get("category_scores", {})
+                st.session_state.saved_top_stress_areas = entry.get("top_stress_areas", [])
+                
                 st.session_state.test_completed = True
                 st.session_state.viewing_history = True
-                st.session_state.history_saved = True  # <-- Prevent re-saving when viewing history
+                st.session_state.history_saved = True
                 st.switch_page("pages/results.py")
     
     # Clear history button
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("🗑️ Clear All History", use_container_width=True):
+        if st.button("🗑️ Clear All History", key="clear_history_btn", use_container_width=True):
             history_file = get_user_history_file()
             if os.path.exists(history_file):
                 os.remove(history_file)
@@ -254,9 +307,13 @@ else:
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("📝 Take Your First Test", use_container_width=True, type="primary"):
-            st.switch_page("pages/test_questions.py")
+        if st.button("📝 Take Your First Test", key="take_first_test_btn", use_container_width=True):
+            st.switch_page("pages/test_page.py")
 
 # ---------- FOOTER ----------
-st.markdown("---")
-st.caption("💡 Your test history is stored locally and only accessible by you.")
+st.markdown(
+    "<p style='color: black; font-weight: bold; font-size: 14px;'>"
+    "💡 Your test history is stored locally and only accessible by you."
+    "</p>", 
+    unsafe_allow_html=True
+)

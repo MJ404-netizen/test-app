@@ -63,28 +63,6 @@ hide_streamlit_style = f"""
             margin-bottom: 10px;
         }}
         
-        .options-container {{
-            background: rgba(255, 255, 255, 0.92);
-            border-radius: 20px;
-            padding: 30px 35px;
-            margin: 10px 20px 10px 5px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.10);
-            border-right: 6px solid #2196F3;
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: 100%;
-        }}
-        
-        .options-title {{
-            font-size: 16px;
-            color: #1565C0;
-            font-weight: 600;
-            margin-bottom: 20px;
-            letter-spacing: 0.5px;
-        }}
-        
         /* HORIZONTAL RADIO BUTTONS - Side by side */
         .stRadio {{
             width: 100% !important;
@@ -167,12 +145,11 @@ hide_streamlit_style = f"""
             margin-top: 20px;
         }}
         
-        /* ---------- GENERAL BUTTONS (NEXT/BACK/SUBMIT) ---------- */
+        /* ---------- NAVIGATION BUTTONS (NEXT/BACK/SUBMIT) ---------- */
         div[data-testid="stHorizontalBlock"] div.stButton > button {{
             width: 100% !important;
             border-radius: 60px !important;
             padding: 25px 20px !important;
-            font-size: 24px !important;
             font-weight: 600 !important;
             border: none !important;
             cursor: pointer !important;
@@ -182,9 +159,20 @@ hide_streamlit_style = f"""
             line-height: 1.4 !important;
             min-height: 70px !important;
         }}
+
+        /* TARGET THE TEXT INSIDE THE BUTTONS TO MATCH FONT SIZE */
+        div[data-testid="stHorizontalBlock"] div.stButton > button p {{
+            font-size: 24px !important; 
+            font-weight: 700 !important;
+            margin: 0 !important;
+        }}
         
+        /* Primary (Next / Submit) - Green */
         div[data-testid="stHorizontalBlock"] div.stButton > button[kind="primary"] {{
             background: #4CAF50 !important;
+            color: white !important;
+        }}
+        div[data-testid="stHorizontalBlock"] div.stButton > button[kind="primary"] p {{
             color: white !important;
         }}
         div[data-testid="stHorizontalBlock"] div.stButton > button[kind="primary"]:hover {{
@@ -193,8 +181,12 @@ hide_streamlit_style = f"""
             transform: translateY(-3px);
         }}
         
+        /* Secondary (Back) - Blue */
         div[data-testid="stHorizontalBlock"] div.stButton > button[kind="secondary"] {{
             background: #2196F3 !important;
+            color: white !important;
+        }}
+        div[data-testid="stHorizontalBlock"] div.stButton > button[kind="secondary"] p {{
             color: white !important;
         }}
         div[data-testid="stHorizontalBlock"] div.stButton > button[kind="secondary"]:hover {{
@@ -203,79 +195,13 @@ hide_streamlit_style = f"""
             transform: translateY(-3px);
         }}
 
-        div[data-testid="stHorizontalBlock"] div.stButton > button:not([kind="primary"]):not([kind="secondary"]) {{
-            background: rgba(255, 255, 255, 0.20) !important;
-            color: #1B5E20 !important;
-            border: 2px solid rgba(76, 175, 80, 0.3) !important;
-            backdrop-filter: blur(10px);
-        }}
-        div[data-testid="stHorizontalBlock"] div.stButton > button:not([kind="primary"]):not([kind="secondary"]):hover {{
-            background: rgba(255, 255, 255, 0.35) !important;
-            border-color: #4CAF50 !important;
-            transform: translateY(-3px);
-        }}
-        
-        .stProgress > div > div {{
-            background-color: #4CAF50 !important;
-        }}
-        .stSubheader {{
-            color: #1B5E20 !important;
-        }}
-        
-        .user-info {{
-            margin-top: 15px;
-            padding: 12px 15px;
-            background: rgba(232, 245, 233, 0.6);
-            border-radius: 10px;
-            font-size: 14px;
-            color: #2E7D32;
-            border: 1px solid #A5D6A7;
-        }}
-        
-        .user-info-item {{
-            display: inline-block;
-            margin-right: 25px;
-        }}
-        
-        .user-info-label {{
-            font-weight: 600;
-        }}
-        
-        .user-info-value {{
-            background: white;
-            padding: 2px 12px;
-            border-radius: 12px;
-            margin-left: 5px;
-            font-weight: 500;
-        }}
-        
-        .warning-text {{
-            color: #F57C00;
-            font-weight: 500;
-        }}
-        
-        .button-container {{
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-        }}
-        
-        .button-container .stButton {{
-            flex: 1;
-        }}
-        
-        .stButton button:disabled {{
-            display: none !important;
-        }}
-
         /* ---------- FORCE NAVIGATION TO ABSOLUTE CORNERS ---------- */
-        /* Target the container that holds both buttons */
         div[data-testid="stHorizontalBlock"]:has(.st-key-home_button) {{
             position: relative !important;
             display: flex !important;
             justify-content: space-between !important;
             align-items: center !important;
-            margin-top: -4rem !important; /* <-- CHANGED THIS TO MOVE UP */
+            margin-top: -4rem !important; 
             margin-bottom: 2rem !important;
         }}
 
@@ -345,6 +271,37 @@ hide_streamlit_style = f"""
 
         .st-key-logout_button button p {{
             display: none !important;
+        }}
+
+        /* ---------- MOBILE FORMATTING (SIDE-BY-SIDE BUTTONS) ---------- */
+        @media (max-width: 768px) {{
+            /* 1. Target the container holding Back and Next buttons */
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"] > div[data-testid="stHorizontalBlock"] {{
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 10px !important;
+                width: 100% !important;
+            }}
+            
+            /* 2. Force columns to exactly 50% width */
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"] > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {{
+                width: 50% !important;
+                min-width: 50% !important;
+                flex: 1 1 50% !important;
+                display: block !important;
+            }}
+
+            /* 3. Automatically shrink button height, padding, and text size for mobile */
+            div[data-testid="stHorizontalBlock"] div.stButton > button {{
+                padding: 10px 5px !important;
+                min-height: 55px !important;
+                border-radius: 30px !important;
+            }}
+            
+            div[data-testid="stHorizontalBlock"] div.stButton > button p {{
+                font-size: 18px !important; 
+            }}
         }}
     </style>
 """
