@@ -1,6 +1,16 @@
 import streamlit as st
 import json
 import os
+import base64
+
+# ---------- LOAD IMAGES AS BASE64 ----------
+def get_base64_image(image_path):
+    if not os.path.exists(image_path):
+        return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode("utf-8")
+
+back_arrow_base64 = get_base64_image("sources/arrow.png")
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
@@ -11,17 +21,26 @@ st.set_page_config(
 )
 
 # ---------- CSS ----------
-hide_streamlit_style = """
+hide_streamlit_style = f"""
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        header {{visibility: hidden;}}
+
+        /* Remove top spacing so the arrow can sit in the true corner */
+        .block-container {{
+            padding-top: 0rem !important;
+            padding-bottom: 2rem !important;
+        }}
+        .stApp > header {{
+            display: none !important;
+        }}
         
-        .stApp {
+        .stApp {{
             background: linear-gradient(#c7f9ff, #dafbff, #fbffdb, #d5f7cb, #c7f9ff) !important;
-        }
+        }}
         
-        .history-item {
+        .history-item {{
             background: rgba(255, 255, 255, 0.92);
             border-radius: 15px;
             padding: 20px;
@@ -29,66 +48,96 @@ hide_streamlit_style = """
             box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
             transition: transform 0.2s;
             border-left: 5px solid #4CAF50;
-        }
+        }}
         
-        .history-item:hover {
+        .history-item:hover {{
             transform: translateX(5px);
-        }
+        }}
         
-        .history-date {
+        .history-date {{
             font-size: 14px;
             color: #666;
-        }
+        }}
         
-        .history-stress-type {
+        .history-stress-type {{
             font-size: 20px;
             font-weight: 600;
-        }
+        }}
         
-        .history-stress-level {
-            font-size: 14px;
-            padding: 4px 14px;
-            border-radius: 20px;
-            display: inline-block;
-        }
-        
-        .stress-low { background: #C8E6C9; color: #1B5E20; }
-        .stress-moderate { background: #FFE0B2; color: #E65100; }
-        .stress-high { background: #FFCDD2; color: #B71C1C; }
-        .stress-eustress { background: #BBDEFB; color: #0D47A1; }
-        .stress-distress { background: #FFCDD2; color: #B71C1C; }
-        .stress-no-stress { background: #C8E6C9; color: #1B5E20; }
-        
-        .empty-state {
+        .empty-state {{
             text-align: center;
             padding: 60px 20px;
-        }
+        }}
         
-        .empty-state-icon {
+        .empty-state-icon {{
             font-size: 64px;
             margin-bottom: 20px;
-        }
+        }}
         
-        .empty-state-text {
+        .empty-state-text {{
             font-size: 20px;
             color: #666;
-        }
+        }}
         
-        .stButton button {
+        .stButton button {{
             border-radius: 12px !important;
             padding: 10px 25px !important;
             font-weight: 600 !important;
             transition: all 0.25s ease !important;
-        }
+        }}
         
-        .stButton button[kind="primary"] {
+        .stButton button[kind="primary"] {{
             background: #4CAF50 !important;
             color: white !important;
-        }
-        .stButton button[kind="primary"]:hover {
+        }}
+        .stButton button[kind="primary"]:hover {{
             background: #43A047 !important;
             transform: translateY(-2px);
-        }
+        }}
+
+        /* ---------- PIN BACK ARROW TO TOP-LEFT CORNER ---------- */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-back_button) {{
+            position: relative !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            margin-top: 1rem !important;
+            margin-bottom: 1rem !important;
+        }}
+
+        .st-key-back_button {{
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+        }}
+
+        .st-key-back_button button {{
+            width: 50px !important;
+            height: 50px !important;
+            min-width: 50px !important;
+            min-height: 50px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background-color: transparent !important;
+            background-image: url("data:image/png;base64,{back_arrow_base64}") !important;
+            background-size: contain !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+        }}
+
+        .st-key-back_button button:hover {{
+            transform: scale(1.08) !important;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25) !important;
+        }}
+
+        .st-key-back_button button p {{
+            display: none !important;
+        }}
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -115,17 +164,17 @@ def load_test_history():
             return []
     return []
 
+# ---------- TOP-LEFT BACK BUTTON ----------
+with st.container():
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("Back", key="back_button", help="Back to Test"):
+            st.switch_page("pages/test_page.py")
+
 # ---------- HEADER ----------
+st.write("")
+st.write("")
 st.title("📜 Test History")
-st.markdown("---")
-
-# ---------- BACK BUTTON ----------
-col1, col2, col3 = st.columns([1, 1, 4])
-with col1:
-    if st.button("← Back to Test", use_container_width=True):
-        st.switch_page("pages/test_page.py")
-
-st.markdown("---")
 
 # ---------- LOAD HISTORY ----------
 history = load_test_history()
@@ -136,7 +185,6 @@ if history:
     for idx, entry in enumerate(history):
         date = entry.get("date", "Unknown date")
         stress_type = entry.get("stress_type", "No Data")
-        stress_level = entry.get("stress_level", "Unknown")
         percentage = entry.get("percentage", 0)
         total_q = entry.get("total_questions", 0)
         age = entry.get("age", "N/A")
@@ -153,8 +201,6 @@ if history:
             emoji = "😌"
             border_color = "#1B5E20"
         
-        stress_class = stress_type.lower().replace(' ', '-')
-        
         # History item
         st.markdown(f"""
             <div class="history-item" style="border-left-color: {border_color};">
@@ -164,8 +210,7 @@ if history:
                         <div class="history-date">📅 {date}</div>
                     </div>
                     <div>
-                        <span class="history-stress-level stress-{stress_class}">{stress_level}</span>
-                        <span style="margin-left: 15px; color: #666;">{percentage:.1f}%</span>
+                        <span style="color: #666; font-weight: 600;">{percentage:.1f}%</span>
                     </div>
                 </div>
                 <div style="margin-top: 10px; font-size: 14px; color: #888;">
@@ -186,8 +231,6 @@ if history:
                 st.session_state.viewing_history = True
                 st.session_state.history_saved = True  # <-- Prevent re-saving when viewing history
                 st.switch_page("pages/results.py")
-        
-        st.divider()
     
     # Clear history button
     col1, col2, col3 = st.columns([1, 2, 1])

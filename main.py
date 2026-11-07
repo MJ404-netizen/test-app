@@ -102,12 +102,70 @@ hide_streamlit_style = """
             left: 30px;
             margin-bottom: 10px;
         }
+
+        /* ---------- FORCE BIGGER TEXT INSIDE BUTTON LABELS ---------- */
+        .stButton button p,
+        .stButton > button p,
+        .stButton button[kind="primary"] p,
+        .stButton button:not([kind="primary"]) p {
+            font-size: 30px !important;
+            font-weight: 700 !important;
+            line-height: 1.2 !important;
+            margin: 0 !important;
+        }
+
+        /* ---------- MOBILE RESPONSIVENESS ---------- */
+        @media (max-width: 768px) {
+            /* Stack columns vertically, center the content */
+            div[data-testid="stHorizontalBlock"] {
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 14px !important;
+            }
+
+            /* Each column takes full width so buttons center consistently */
+            div[data-testid="column"] {
+                width: 100% !important;
+                display: flex !important;
+                justify-content: center !important;
+            }
+
+            /* Remove the horizontal offsets that misalign buttons on mobile */
+            .stButton button[kind="primary"] {
+                margin-right: 0 !important;
+                margin-left: 0 !important;
+            }
+            .stButton button:not([kind="primary"]) {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+
+            /* Center each button with a max-width so both are equal and centered */
+            .stButton {
+                width: 100% !important;
+                display: flex !important;
+                justify-content: center !important;
+            }
+            .stButton button {
+                width: 85% !important;
+                max-width: 420px !important;
+                min-height: 160px !important;
+                padding: 20px 15px !important;
+                margin: 0 auto !important;
+            }
+
+            /* Slightly smaller label so text fits on narrow screens */
+            .stButton button p,
+            .stButton > button p {
+                font-size: 26px !important;
+            }
+        }
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # ---------- MAIN CONTENT ----------
-st.markdown('<span class="logo">🤖</span>', unsafe_allow_html=True)
+#st.markdown('<span class="logo">🤖</span>', unsafe_allow_html=True)
 st.markdown('<h1 class="main-title">Stress Type Test</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Discover and know your stress type with our test</p>', unsafe_allow_html=True)
 

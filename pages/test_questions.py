@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import csv
 import os
+import base64
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
@@ -11,18 +12,28 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ---------- LOAD IMAGES AS BASE64 ----------
+def get_base64_image(image_path):
+    if not os.path.exists(image_path):
+        return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode("utf-8")
+
+profile_img_base64 = get_base64_image("sources/profile.png")
+home_img_base64 = get_base64_image("sources/home.png")
+
 # ---------- CSS ----------
-hide_streamlit_style = """
+hide_streamlit_style = f"""
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        header {{visibility: hidden;}}
         
-        .stApp {
+        .stApp {{
             background: linear-gradient(#c7f9ff, #dafbff, #fbffdb, #d5f7cb, #c7f9ff) !important;
-        }
+        }}
         
-        .question-container {
+        .question-container {{
             background: rgba(255, 255, 255, 0.92);
             border-radius: 20px;
             padding: 30px 35px;
@@ -34,25 +45,25 @@ hide_streamlit_style = """
             flex-direction: column;
             justify-content: center;
             height: 100%;
-        }
+        }}
         
-        .question-number {
+        .question-number {{
             font-size: 14px;
             color: #2E7D32;
             font-weight: 500;
             margin-bottom: 8px;
             letter-spacing: 1px;
-        }
+        }}
         
-        .question-text {
+        .question-text {{
             font-size: 22px;
             font-weight: 600;
             color: #1B5E20;
             line-height: 1.7;
             margin-bottom: 10px;
-        }
+        }}
         
-        .options-container {
+        .options-container {{
             background: rgba(255, 255, 255, 0.92);
             border-radius: 20px;
             padding: 30px 35px;
@@ -64,31 +75,31 @@ hide_streamlit_style = """
             flex-direction: column;
             justify-content: center;
             height: 100%;
-        }
+        }}
         
-        .options-title {
+        .options-title {{
             font-size: 16px;
             color: #1565C0;
             font-weight: 600;
             margin-bottom: 20px;
             letter-spacing: 0.5px;
-        }
+        }}
         
         /* HORIZONTAL RADIO BUTTONS - Side by side */
-        .stRadio {
+        .stRadio {{
             width: 100% !important;
             margin-top: 20px !important;
-        }
+        }}
         
-        .stRadio > div {
+        .stRadio > div {{
             display: flex !important;
             flex-direction: row !important;
             gap: 10px !important;
             width: 100% !important;
             flex-wrap: nowrap !important;
-        }
+        }}
         
-        .stRadio > div > label {
+        .stRadio > div > label {{
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -103,60 +114,61 @@ hide_streamlit_style = """
             min-height: 55px !important;
             text-align: center !important;
             color: #333333 !important;
-        }
+        }}
         
-        .stRadio > div > label:hover {
+        .stRadio > div > label:hover {{
             background: #E3F2FD !important;
             border-color: #2196F3 !important;
             transform: translateY(-2px);
-        }
+        }}
         
-        .stRadio > div > label[data-selected="true"] {
+        .stRadio > div > label[data-selected="true"] {{
             background: #2196F3 !important;
             border-color: #1976D2 !important;
             color: #FFFFFF !important;
             box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3) !important;
             transform: translateY(-2px);
-        }
+        }}
         
-        .stRadio > div > label[data-selected="true"]:hover {
+        .stRadio > div > label[data-selected="true"]:hover {{
             background: #1976D2 !important;
             border-color: #1565C0 !important;
-        }
+        }}
         
-        .stRadio > div > label > div {
+        .stRadio > div > label > div {{
             display: flex !important;
             align-items: center !important;
             gap: 10px !important;
             justify-content: center !important;
-        }
+        }}
         
-        .stRadio > div > label span {
+        .stRadio > div > label span {{
             font-size: 15px !important;
             font-weight: 500 !important;
             color: inherit !important;
             white-space: nowrap !important;
-        }
+        }}
         
-        .stRadio > div > label input[type="radio"] {
+        .stRadio > div > label input[type="radio"] {{
             width: 16px !important;
             height: 20px !important;
             accent-color: #2196F3 !important;
             flex-shrink: 0 !important;
-        }
+        }}
         
-        .stRadio > label {
+        .stRadio > label {{
             display: none !important;
-        }
+        }}
         
-        .progress-text {
+        .progress-text {{
             text-align: center;
             color: #2E7D32;
             font-size: 16px;
             margin-top: 20px;
-        }
+        }}
         
-        .stButton button {
+        /* ---------- GENERAL BUTTONS (NEXT/BACK/SUBMIT) ---------- */
+        div[data-testid="stHorizontalBlock"] div.stButton > button {{
             width: 100% !important;
             border-radius: 60px !important;
             padding: 25px 20px !important;
@@ -169,48 +181,48 @@ hide_streamlit_style = """
             font-family: inherit !important;
             line-height: 1.4 !important;
             min-height: 70px !important;
-        }
+        }}
         
-        .stButton button[kind="primary"] {
+        div[data-testid="stHorizontalBlock"] div.stButton > button[kind="primary"] {{
             background: #4CAF50 !important;
             color: white !important;
-        }
-        .stButton button[kind="primary"]:hover {
+        }}
+        div[data-testid="stHorizontalBlock"] div.stButton > button[kind="primary"]:hover {{
             background: #43A047 !important;
             box-shadow: 0 14px 34px rgba(76, 175, 80, 0.40) !important;
             transform: translateY(-3px);
-        }
+        }}
         
-        .stButton button[kind="secondary"] {
+        div[data-testid="stHorizontalBlock"] div.stButton > button[kind="secondary"] {{
             background: #2196F3 !important;
             color: white !important;
-        }
-        .stButton button[kind="secondary"]:hover {
+        }}
+        div[data-testid="stHorizontalBlock"] div.stButton > button[kind="secondary"]:hover {{
             background: #1976D2 !important;
             box-shadow: 0 14px 34px rgba(33, 150, 243, 0.40) !important;
             transform: translateY(-3px);
-        }
+        }}
 
-        .stButton button:not([kind="primary"]):not([kind="secondary"]) {
+        div[data-testid="stHorizontalBlock"] div.stButton > button:not([kind="primary"]):not([kind="secondary"]) {{
             background: rgba(255, 255, 255, 0.20) !important;
             color: #1B5E20 !important;
             border: 2px solid rgba(76, 175, 80, 0.3) !important;
             backdrop-filter: blur(10px);
-        }
-        .stButton button:not([kind="primary"]):not([kind="secondary"]):hover {
+        }}
+        div[data-testid="stHorizontalBlock"] div.stButton > button:not([kind="primary"]):not([kind="secondary"]):hover {{
             background: rgba(255, 255, 255, 0.35) !important;
             border-color: #4CAF50 !important;
             transform: translateY(-3px);
-        }
+        }}
         
-        .stProgress > div > div {
+        .stProgress > div > div {{
             background-color: #4CAF50 !important;
-        }
-        .stSubheader {
+        }}
+        .stSubheader {{
             color: #1B5E20 !important;
-        }
+        }}
         
-        .user-info {
+        .user-info {{
             margin-top: 15px;
             padding: 12px 15px;
             background: rgba(232, 245, 233, 0.6);
@@ -218,43 +230,122 @@ hide_streamlit_style = """
             font-size: 14px;
             color: #2E7D32;
             border: 1px solid #A5D6A7;
-        }
+        }}
         
-        .user-info-item {
+        .user-info-item {{
             display: inline-block;
             margin-right: 25px;
-        }
+        }}
         
-        .user-info-label {
+        .user-info-label {{
             font-weight: 600;
-        }
+        }}
         
-        .user-info-value {
+        .user-info-value {{
             background: white;
             padding: 2px 12px;
             border-radius: 12px;
             margin-left: 5px;
             font-weight: 500;
-        }
+        }}
         
-        .warning-text {
+        .warning-text {{
             color: #F57C00;
             font-weight: 500;
-        }
+        }}
         
-        .button-container {
+        .button-container {{
             display: flex;
             gap: 15px;
             justify-content: center;
-        }
+        }}
         
-        .button-container .stButton {
+        .button-container .stButton {{
             flex: 1;
-        }
+        }}
         
-        .stButton button:disabled {
+        .stButton button:disabled {{
             display: none !important;
-        }
+        }}
+
+        /* ---------- FORCE NAVIGATION TO ABSOLUTE CORNERS ---------- */
+        /* Target the container that holds both buttons */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-home_button) {{
+            position: relative !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            margin-top: -4rem !important; /* <-- CHANGED THIS TO MOVE UP */
+            margin-bottom: 2rem !important;
+        }}
+
+        .st-key-home_button {{
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+        }}
+
+        .st-key-home_button button {{
+            width: 50px !important;
+            height: 50px !important;
+            min-width: 50px !important;
+            min-height: 50px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background-color: transparent !important;
+            background-image: url("data:image/png;base64,{home_img_base64}") !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+        }}
+
+        .st-key-home_button button:hover {{
+            transform: scale(1.08) !important;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25) !important;
+        }}
+
+        .st-key-home_button button p {{
+            display: none !important;
+        }}
+
+        .st-key-logout_button {{
+            position: absolute !important;
+            right: 0 !important;
+            top: 0 !important;
+        }}
+
+        .st-key-logout_button button {{
+            width: 50px !important;
+            height: 50px !important;
+            min-width: 50px !important;
+            min-height: 50px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background-color: transparent !important;
+            background-image: url("data:image/png;base64,{profile_img_base64}") !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+        }}
+
+        .st-key-logout_button button:hover {{
+            transform: scale(1.08) !important;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25) !important;
+        }}
+
+        .st-key-logout_button button p {{
+            display: none !important;
+        }}
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -267,7 +358,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 # ---------- RESET VIEWING HISTORY FLAG ----------
-# When user is on the test questions page, ensure we're not in viewing history mode
 st.session_state.viewing_history = False
 
 # ---------- CSV FILE PATH ----------
@@ -275,189 +365,112 @@ CSV_PATH = "Stress_Dataset.csv"
 
 # ---------- DEFINE QUESTIONS DIRECTLY ----------
 def get_questions():
-    """Define all questions directly - no CSV loading needed for question text"""
-    
-    # Define the exact questions you want to display
     stress_questions = [
-        {
-            "text": "Have you recently experienced stress in your life?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Have you noticed a rapid heartbeat or palpitations?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Have you been dealing with anxiety or tension recently? (How Serious is it?)",
-            "options": ["1 - Minimal/Mild", "2 - Moderate", "3 - Severe", "4 - Panic-Level", "5 - Debilitating/Chronic"]
-        },
-        {
-            "text": "Do you face any sleep problems or difficulties falling asleep?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "How often have you been dealing with anxiety or tension recently?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Have you been getting headaches more than usual?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you get irritated easily?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you have trouble concentrating on your academic tasks?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Have you been feeling sadness or low mood?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Have you been experiencing any illness or health issues?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you often feel lonely or isolated?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you feel overwhelmed with your academic workload?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Are you in competition with your peers, and does it affect you?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you find that your relationship often causes you stress?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Are you facing any difficulties with your professors or instructors?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Is your working environment unpleasant or stressful?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you struggle to find time for relaxation and leisure activities?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Is your hostel or home environment causing you difficulties?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you lack confidence in your academic performance?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you lack confidence in your choice of academic subjects?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Academic and extracurricular activities conflicting for you?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Do you attend classes regularly?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        },
-        {
-            "text": "Have you gained/lost weight?",
-            "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]
-        }
+        {"text": "Have you recently experienced stress in your life?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Have you noticed a rapid heartbeat or palpitations?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Have you been dealing with anxiety or tension recently? (How Serious is it?)", "options": ["1 - Minimal/Mild", "2 - Moderate", "3 - Severe", "4 - Panic-Level", "5 - Debilitating/Chronic"]},
+        {"text": "Do you face any sleep problems or difficulties falling asleep?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "How often have you been dealing with anxiety or tension recently?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Have you been getting headaches more than usual?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you get irritated easily?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you have trouble concentrating on your academic tasks?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Have you been feeling sadness or low mood?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Have you been experiencing any illness or health issues?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you often feel lonely or isolated?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you feel overwhelmed with your academic workload?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Are you in competition with your peers, and does it affect you?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you find that your relationship often causes you stress?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Are you facing any difficulties with your professors or instructors?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Is your working environment unpleasant or stressful?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you struggle to find time for relaxation and leisure activities?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Is your hostel or home environment causing you difficulties?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you lack confidence in your academic performance?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you lack confidence in your choice of academic subjects?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Academic and extracurricular activities conflicting for you?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Do you attend classes regularly?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]},
+        {"text": "Have you gained/lost weight?", "options": ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"]}
     ]
     
     questions = []
-    
-    # Add Gender as Question 1
     questions.append({
-        "id": 1,
-        "question": "What is your gender?",
-        "category": "Demographics",
-        "options": ["Male", "Female"],
-        "column_name": "Gender",
-        "is_demographic": True
+        "id": 1, "question": "What is your gender?", "category": "Demographics",
+        "options": ["Male", "Female"], "column_name": "Gender", "is_demographic": True
+    })
+    questions.append({
+        "id": 2, "question": "What is your age?", "category": "Demographics",
+        "options": ["18", "19", "20", "21"], "column_name": "Age", "is_demographic": True
     })
     
-    # Add Age as Question 2
-    questions.append({
-        "id": 2,
-        "question": "What is your age?",
-        "category": "Demographics",
-        "options": ["18", "19", "20", "21"],
-        "column_name": "Age",
-        "is_demographic": True
-    })
-    
-    # Add stress questions (Questions 3-25)
     for idx, question_data in enumerate(stress_questions, start=3):
         questions.append({
-            "id": idx,
-            "question": question_data["text"],
-            "category": "Stress Assessment",
-            "options": question_data["options"],
-            "column_name": question_data["text"],
-            "is_demographic": False
+            "id": idx, "question": question_data["text"], "category": "Stress Assessment",
+            "options": question_data["options"], "column_name": question_data["text"], "is_demographic": False
         })
-    
     return questions
 
 # ---------- LOAD CSV FOR DATA STORAGE (optional) ----------
 @st.cache_data
 def load_csv_data():
-    """Load CSV data if it exists, otherwise return None"""
     try:
         if os.path.exists(CSV_PATH):
-            df = pd.read_csv(CSV_PATH)
-            return df
-        else:
-            return None
+            return pd.read_csv(CSV_PATH)
+        return None
     except Exception as e:
         st.warning(f"Could not load CSV: {str(e)}")
         return None
 
 # ---------- INITIALIZE SESSION STATE ----------
-if "current_q_index" not in st.session_state:
-    st.session_state.current_q_index = 0
-if "answers" not in st.session_state:
-    st.session_state.answers = {}
-if "test_completed" not in st.session_state:
-    st.session_state.test_completed = False
-if "history_saved" not in st.session_state:
-    st.session_state.history_saved = False  # <-- ADD THIS
-if "user_responses" not in st.session_state:
-    st.session_state.user_responses = {}
-if "formatted_answers" not in st.session_state:
-    st.session_state.formatted_answers = {}
-if "gender" not in st.session_state:
-    st.session_state.gender = None
-if "gender_code" not in st.session_state:
-    st.session_state.gender_code = None
-if "age" not in st.session_state:
-    st.session_state.age = None
+if "current_q_index" not in st.session_state: st.session_state.current_q_index = 0
+if "answers" not in st.session_state: st.session_state.answers = {}
+if "test_completed" not in st.session_state: st.session_state.test_completed = False
+if "history_saved" not in st.session_state: st.session_state.history_saved = False
+if "user_responses" not in st.session_state: st.session_state.user_responses = {}
+if "formatted_answers" not in st.session_state: st.session_state.formatted_answers = {}
+if "gender" not in st.session_state: st.session_state.gender = None
+if "gender_code" not in st.session_state: st.session_state.gender_code = None
+if "age" not in st.session_state: st.session_state.age = None
 
 # ---------- LOAD QUESTIONS ----------
 questions = get_questions()
+st.session_state.full_df = load_csv_data()
 
-# Try to load CSV data (optional)
-df = load_csv_data()
-if df is not None:
-    st.session_state.full_df = df
-else:
-    st.session_state.full_df = None
+# ---------- TOP NAVIGATION: FORCED LEFT & RIGHT ----------
+with st.container():
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.markdown('<div class="st-key-home_button">', unsafe_allow_html=True)
+        if st.button("Home", key="home_button", help="Go to Home"):
+            st.session_state.viewing_history = False
+            st.switch_page("main.py")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="st-key-logout_button">', unsafe_allow_html=True)
+        if st.button("Logout", key="logout_button", help="Logout"):
+            st.session_state.logged_in = False
+            st.session_state.username = ""
+            st.session_state.user_id = ""
+            st.session_state.current_q_index = 0
+            st.session_state.answers = {}
+            st.session_state.user_responses = {}
+            st.session_state.formatted_answers = {}
+            st.session_state.test_completed = False
+            st.session_state.gender = None
+            st.session_state.gender_code = None
+            st.session_state.age = None
+            st.session_state.history_saved = False
+            for i in range(1, 26):
+                if f"q_{i}_answer" in st.session_state:
+                    del st.session_state[f"q_{i}_answer"]
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------- MAIN CONTENT ----------
 st.title("📝 Stress Type Test")
 
 if not questions:
     st.error("❌ No questions loaded.")
-    if st.button("← Back to Home"):
+    if st.button("Home", key="home_button_fallback", help="Go to Home"):
         st.switch_page("main.py")
     st.stop()
 
@@ -480,12 +493,9 @@ if st.session_state.test_completed:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("📊 View Results", use_container_width=True, type="primary"):
-            # Reset history_saved before going to results
             st.session_state.history_saved = False
             st.session_state.viewing_history = False
             st.switch_page("pages/results.py")
-        if st.button("← Back to Home", use_container_width=True):
-            st.switch_page("main.py")
     st.stop()
 
 # ---------- DISPLAY CURRENT QUESTION ----------
@@ -496,12 +506,9 @@ if current_index >= 0 and current_index < total_questions:
     options = question.get("options", ["1 - Never", "2 - Rarely", "3 - Sometimes", "4 - Often", "5 - Always"])
     is_demographic = question.get("is_demographic", False)
     
-    # Progress bar
-    progress = (current_index) / total_questions
-    st.progress(progress)
+    st.progress((current_index) / total_questions)
     st.caption(f"Question {current_index + 1} of {total_questions}")
     
-    # Display user info if already set (for stress questions)
     if st.session_state.gender and st.session_state.age and not is_demographic:
         st.markdown(f"""
             <div class="user-info">
@@ -516,13 +523,10 @@ if current_index >= 0 and current_index < total_questions:
             </div>
         """, unsafe_allow_html=True)
     
-    # ---------- TWO COLUMN LAYOUT: QUESTION | OPTIONS ----------
     col_q, col_o = st.columns([1.2, 2])
     
     with col_q:
-        # Create HTML for question container
         category_text = "📋 Demographic" if is_demographic else "📝 Stress Assessment"
-        
         st.markdown(f"""
             <div class="question-container">
                 <div class="question-number">
@@ -533,39 +537,27 @@ if current_index >= 0 and current_index < total_questions:
         """, unsafe_allow_html=True)
     
     with col_o:
-        # Get the current selection from session state if it exists
         current_selection = st.session_state.answers.get(q_id, None)
-        if current_selection in options:
-            index_value = options.index(current_selection)
-        else:
-            index_value = None
+        index_value = options.index(current_selection) if current_selection in options else None
         
-        # Radio button - this will be inside the options container
         selected_option = st.radio(
-            label="Select your answer:",
-            options=options,
-            key=f"q_{q_id}",
-            index=index_value,
-            label_visibility="collapsed",
+            label="Select your answer:", options=options, key=f"q_{q_id}",
+            index=index_value, label_visibility="collapsed",
         )
     
-    # ---------- NAVIGATION BUTTONS ----------
-    st.divider()
+    st.write("")
+    st.write("")
     
-    # Check if we're on the first question
     is_first_question = (current_index == 0)
     is_last_question = (current_index == total_questions - 1)
     
-    # Create columns for buttons - use different layouts based on question position
     if is_first_question:
-        # First question: Only show Next button (full width)
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("➡️ Next", use_container_width=True, type="primary"):
                 if selected_option is None:
                     st.warning("⚠️ Please select an answer before proceeding.")
                 else:
-                    # Store the answer
                     st.session_state.answers[q_id] = selected_option
                     st.session_state.user_responses[question.get("column_name", q_text)] = selected_option
                     st.session_state[f"q_{q_id}_answer"] = selected_option
@@ -581,15 +573,12 @@ if current_index >= 0 and current_index < total_questions:
                     st.session_state.current_q_index += 1
                     st.rerun()
     else:
-        # Not first question: Show both Back and Next/Submit buttons
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             btn_col1, btn_col2 = st.columns(2)
             
             with btn_col1:
-                # Back button
                 if st.button("◀️ Back", use_container_width=True, type="secondary"):
-                    # Save current answer before going back
                     if selected_option is not None:
                         st.session_state.answers[q_id] = selected_option
                         st.session_state.user_responses[question.get("column_name", q_text)] = selected_option
@@ -608,7 +597,6 @@ if current_index >= 0 and current_index < total_questions:
             
             with btn_col2:
                 if is_last_question:
-                    # Last question - Show SUBMIT button
                     if st.button("📤 Submit Test", use_container_width=True, type="primary"):
                         if selected_option is None:
                             st.warning("⚠️ Please select an answer before submitting.")
@@ -625,14 +613,12 @@ if current_index >= 0 and current_index < total_questions:
                                 elif q_id == 2:
                                     st.session_state.age = int(selected_option)
                             
-                            # Reset history_saved flag before going to results
                             st.session_state.history_saved = False
                             st.session_state.viewing_history = False
                             st.session_state.test_completed = True
                             st.rerun()
 
                 else:
-                    # Not last question - Show NEXT button
                     if st.button("➡️ Next", use_container_width=True, type="primary"):
                         if selected_option is None:
                             st.warning("⚠️ Please select an answer before proceeding.")
@@ -652,7 +638,6 @@ if current_index >= 0 and current_index < total_questions:
                             st.session_state.current_q_index += 1
                             st.rerun()
     
-    # Show progress text
     answered_count = len(st.session_state.answers)
     st.markdown(f"""
         <div class="progress-text">
@@ -663,29 +648,7 @@ if current_index >= 0 and current_index < total_questions:
         </div>
     """, unsafe_allow_html=True)
     
-    st.divider()
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
-        if st.button("🚪 Logout", use_container_width=True):
-            # Reset all session state
-            st.session_state.logged_in = False
-            st.session_state.username = ""
-            st.session_state.user_id = ""
-            st.session_state.current_q_index = 0
-            st.session_state.answers = {}
-            st.session_state.user_responses = {}
-            st.session_state.formatted_answers = {}
-            st.session_state.test_completed = False
-            st.session_state.gender = None
-            st.session_state.gender_code = None
-            st.session_state.age = None
-            st.session_state.history_saved = False
-            # Clear individual question variables
-            for i in range(1, 26):
-                if f"q_{i}_answer" in st.session_state:
-                    del st.session_state[f"q_{i}_answer"]
-            st.rerun()
+    st.write("")
 
 # If no question is selected, start from the beginning
 if current_index < 0 or current_index >= total_questions:

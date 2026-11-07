@@ -17,6 +17,7 @@ import json
 import os
 from utils.txt_generator import generate_txt_report
 from utils.svm_predictor import predict_stress_type
+from utils.pdf_generator import generate_pdf_report
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
@@ -26,106 +27,169 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ---------- LOAD IMAGES AS BASE64 ----------
+def get_base64_image(image_path):
+    if not os.path.exists(image_path):
+        return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode("utf-8")
+
+profile_img_base64 = get_base64_image("sources/profile.png")
+home_img_base64 = get_base64_image("sources/home.png")
+
 # ---------- CSS ----------
-hide_streamlit_style = """
+hide_streamlit_style = f"""
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        header {{visibility: hidden;}}
         
-        .stApp {
+        /* --- PUSH CONTENT LOWER --- */
+        .block-container {{
+            padding-top: 5rem !important; /* Increased to push the context lower */
+            padding-bottom: 2rem !important;
+        }}
+        .stApp > header {{
+            display: none !important;
+        }}
+        h1 {{
+            margin-top: -1rem !important;
+            padding-top: 0 !important;
+        }}
+        /* --------------------------- */
+
+        .stApp {{
             background: linear-gradient(#c7f9ff, #dafbff, #fbffdb, #d5f7cb, #c7f9ff) !important;
-        }
+        }}
         
-        .result-card {
+        .result-card {{
             background: rgba(255, 255, 255, 0.92);
             border-radius: 20px;
             padding: 25px 30px;
             margin: 15px 0;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.10);
             border-left: 6px solid #4CAF50;
-        }
+        }}
         
-        .result-card-warning {
-            border-left: 6px solid #FF9800;
-        }
-        
-        .result-card-danger {
-            border-left: 6px solid #F44336;
-        }
-        
-        .result-card-info {
-            border-left: 6px solid #2196F3;
-        }
-        
-        .stat-number {
-            font-size: 48px;
-            font-weight: 700;
-            color: #1B5E20;
-            text-align: center;
-        }
-        
-        .stat-label {
-            font-size: 16px;
-            color: #666;
-            text-align: center;
-            margin-top: 5px;
-        }
-        
-        .stress-level {
+        .stress-type-title {{
             font-size: 24px;
             font-weight: 600;
             padding: 10px 20px;
             border-radius: 12px;
             text-align: center;
-        }
+        }}
         
-        .stress-low {
-            background: #C8E6C9;
-            color: #1B5E20;
-        }
+        .stress-eustress {{ background: #BBDEFB; color: #0D47A1; }}
+        .stress-distress {{ background: #FFCDD2; color: #B71C1C; }}
+        .stress-no-stress {{ background: #C8E6C9; color: #1B5E20; }}
         
-        .stress-moderate {
-            background: #FFE0B2;
-            color: #E65100;
-        }
-        
-        .stress-high {
-            background: #FFCDD2;
-            color: #B71C1C;
-        }
-        
-        .stress-eustress {
-            background: #BBDEFB;
-            color: #0D47A1;
-        }
-        
-        .stress-distress {
-            background: #FFCDD2;
-            color: #B71C1C;
-        }
-        
-        .stress-no-stress {
-            background: #C8E6C9;
-            color: #1B5E20;
-        }
-        
-        .recommendation-box {
+        .recommendation-box {{
             background: #E3F2FD;
             border-radius: 12px;
             padding: 20px;
             margin: 10px 0;
             border-left: 4px solid #1976D2;
-        }
-        
-        .stress-type-box {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            margin: 20px 0;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.10);
-            text-align: center;
-        }
+        }}
+
+        /* ---------- OVAL ACTION BUTTONS (BOTTOM) ---------- */
+        div[data-testid="stHorizontalBlock"] div.stButton > button,
+        div[data-testid="stHorizontalBlock"] div.stDownloadButton > button {{
+            border-radius: 50px !important;
+            padding: 10px 20px !important;
+            width: 150px !important;
+            height: 60px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-weight: 600 !important;
+            border: none !important;
+            transition: all 0.2s ease !important;
+        }}
+
+        /* Hover effects for action buttons */
+        div[data-testid="stHorizontalBlock"] div.stButton > button:hover,
+        div[data-testid="stHorizontalBlock"] div.stDownloadButton > button:hover {{
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15) !important;
+        }}
+
+        /* ---------- FORCE NAVIGATION TO ABSOLUTE CORNERS ---------- */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-home_button) {{
+            position: relative !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            margin-top: -3rem !important; /* Adjusted so buttons move lower but stay safe */
+            margin-bottom: 2rem !important;
+        }}
+
+        .st-key-home_button {{
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+        }}
+
+        .st-key-home_button button {{
+            width: 50px !important;
+            height: 50px !important;
+            min-width: 50px !important;
+            min-height: 50px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background-color: transparent !important;
+            background-image: url("data:image/png;base64,{home_img_base64}") !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+        }}
+
+        .st-key-home_button button:hover {{
+            transform: scale(1.08) !important;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25) !important;
+        }}
+
+        .st-key-home_button button p {{
+            display: none !important;
+        }}
+
+        .st-key-logout_button {{
+            position: absolute !important;
+            right: 0 !important;
+            top: 0 !important;
+        }}
+
+        .st-key-logout_button button {{
+            width: 50px !important;
+            height: 50px !important;
+            min-width: 50px !important;
+            min-height: 50px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background-color: transparent !important;
+            background-image: url("data:image/png;base64,{profile_img_base64}") !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+        }}
+
+        .st-key-logout_button button:hover {{
+            transform: scale(1.08) !important;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25) !important;
+        }}
+
+        .st-key-logout_button button p {{
+            display: none !important;
+        }}
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -137,6 +201,25 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
         st.switch_page("pages/login.py")
     st.stop()
 
+# ---------- TOP NAVIGATION: FORCED LEFT & RIGHT ----------
+with st.container():
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.markdown('<div class="st-key-home_button">', unsafe_allow_html=True)
+        if st.button("Home", key="home_button", help="Go to Home"):
+            st.session_state.viewing_history = False
+            st.switch_page("pages/test_page.py")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="st-key-logout_button">', unsafe_allow_html=True)
+        if st.button("Logout", key="logout_button", help="Logout"):
+            st.session_state.logged_in = False
+            st.session_state.username = ""
+            st.session_state.user_id = ""
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
 # ---------- CHECK IF TEST IS COMPLETED ----------
 if not st.session_state.get("test_completed", False):
     st.warning("⚠️ Please complete the stress test first to view results.")
@@ -145,8 +228,8 @@ if not st.session_state.get("test_completed", False):
     st.stop()
 
 # ---------- HEADER ----------
+st.write("")
 st.title("📊 Stress Test Results")
-st.markdown("---")
 
 # ---------- GET USER DATA ----------
 gender = st.session_state.get("gender", "Not specified")
@@ -156,121 +239,44 @@ answers = st.session_state.get("answers", {})
 
 # ---------- DEFINE QUESTION MAPPING ----------
 def get_question_mapping():
-    """Get the mapping of question IDs to their text and categories"""
-    
-    # Question ID to text mapping
     question_texts = {
-        1: "What is your gender?",
-        2: "What is your age?",
-        3: "Have you recently experienced stress in your life?",
-        4: "Have you noticed a rapid heartbeat or palpitations?",
-        5: "Have you been dealing with anxiety or tension recently? (How Serious is it?)",
-        6: "Do you face any sleep problems or difficulties falling asleep?",
-        7: "How often have you been dealing with anxiety or tension recently?",
-        8: "Have you been getting headaches more than usual?",
-        9: "Do you get irritated easily?",
-        10: "Do you have trouble concentrating on your academic tasks?",
-        11: "Have you been feeling sadness or low mood?",
-        12: "Have you been experiencing any illness or health issues?",
-        13: "Do you often feel lonely or isolated?",
-        14: "Do you feel overwhelmed with your academic workload?",
-        15: "Are you in competition with your peers, and does it affect you?",
-        16: "Do you find that your relationship often causes you stress?",
-        17: "Are you facing any difficulties with your professors or instructors?",
-        18: "Is your working environment unpleasant or stressful?",
-        19: "Do you struggle to find time for relaxation and leisure activities?",
-        20: "Is your hostel or home environment causing you difficulties?",
-        21: "Do you lack confidence in your academic performance?",
-        22: "Do you lack confidence in your choice of academic subjects?",
-        23: "Academic and extracurricular activities conflicting for you?",
-        24: "Do you attend classes regularly?",
-        25: "Have you gained/lost weight?"
+        1: "What is your gender?", 2: "What is your age?", 3: "Have you recently experienced stress in your life?",
+        4: "Have you noticed a rapid heartbeat or palpitations?", 5: "Have you been dealing with anxiety or tension recently? (How Serious is it?)",
+        6: "Do you face any sleep problems or difficulties falling asleep?", 7: "How often have you been dealing with anxiety or tension recently?",
+        8: "Have you been getting headaches more than usual?", 9: "Do you get irritated easily?", 10: "Do you have trouble concentrating on your academic tasks?",
+        11: "Have you been feeling sadness or low mood?", 12: "Have you been experiencing any illness or health issues?", 13: "Do you often feel lonely or isolated?",
+        14: "Do you feel overwhelmed with your academic workload?", 15: "Are you in competition with your peers, and does it affect you?",
+        16: "Do you find that your relationship often causes you stress?", 17: "Are you facing any difficulties with your professors or instructors?",
+        18: "Is your working environment unpleasant or stressful?", 19: "Do you struggle to find time for relaxation and leisure activities?",
+        20: "Is your hostel or home environment causing you difficulties?", 21: "Do you lack confidence in your academic performance?",
+        22: "Do you lack confidence in your choice of academic subjects?", 23: "Academic and extracurricular activities conflicting for you?",
+        24: "Do you attend classes regularly?", 25: "Have you gained/lost weight?"
     }
     
-    # Category definitions with question IDs
     categories = {
-        "🩺 Physical & Health Indicators": {
-            "ids": [8, 12, 25],
-            "questions": [
-                "Have you been getting headaches more than usual?",
-                "Have you been experiencing any illness or health issues?",
-                "Have you gained/lost weight?"
-            ]
-        },
-        "😰 Emotional & Stress Indicators": {
-            "ids": [3, 4, 5, 6, 7, 9, 10, 11, 13],
-            "questions": [
-                "Have you recently experienced stress in your life?",
-                "Have you noticed a rapid heartbeat or palpitations?",
-                "Have you been dealing with anxiety or tension recently? (How Serious is it?)",
-                "Do you face any sleep problems or difficulties falling asleep?",
-                "How often have you been dealing with anxiety or tension recently?",
-                "Do you get irritated easily?",
-                "Do you have trouble concentrating on your academic tasks?",
-                "Have you been feeling sadness or low mood?",
-                "Do you often feel lonely or isolated?"
-            ]
-        },
-        "📚 Academic & Environment Stressors": {
-            "ids": [14, 15, 17, 18, 20, 21, 22, 23, 24],
-            "questions": [
-                "Do you feel overwhelmed with your academic workload?",
-                "Are you in competition with your peers, and does it affect you?",
-                "Are you facing any difficulties with your professors or instructors?",
-                "Is your working environment unpleasant or stressful?",
-                "Is your hostel or home environment causing you difficulties?",
-                "Do you lack confidence in your academic performance?",
-                "Do you lack confidence in your choice of academic subjects?",
-                "Academic and extracurricular activities conflicting for you?",
-                "Do you attend classes regularly?"
-            ]
-        },
-        "💬 Social & Relationship Factors": {
-            "ids": [16, 19],
-            "questions": [
-                "Do you find that your relationship often causes you stress?",
-                "Do you struggle to find time for relaxation and leisure activities?"
-            ]
-        }
+        "🩺 Physical & Health Indicators": {"ids": [8, 12, 25], "questions": []},
+        "😰 Emotional & Stress Indicators": {"ids": [3, 4, 5, 6, 7, 9, 10, 11, 13], "questions": []},
+        "📚 Academic & Environment Stressors": {"ids": [14, 15, 17, 18, 20, 21, 22, 23, 24], "questions": []},
+        "💬 Social & Relationship Factors": {"ids": [16, 19], "questions": []}
     }
-    
     return question_texts, categories
 
 # ---------- ANALYZE RESPONSES ----------
 def calculate_stress_score(answers):
-    """Calculate stress score from answers"""
     stress_answers = {k: v for k, v in answers.items() if k >= 3}
-    
-    if not stress_answers:
-        return 0, 0
-    
+    if not stress_answers: return 0, 0
     scores = []
     for answer in stress_answers.values():
         try:
             score = int(answer.split(" - ")[0])
             scores.append(score)
-        except:
-            continue
-    
+        except: continue
     total_score = sum(scores)
     max_possible = len(scores) * 5
     percentage = (total_score / max_possible) * 100 if max_possible > 0 else 0
-    
     return total_score, percentage
 
-def get_stress_level(percentage):
-    """Get stress level based on percentage"""
-    if percentage < 33:
-        return "Low Stress", "stress-low", "😊"
-    elif percentage < 66:
-        return "Moderate Stress", "stress-moderate", "😐"
-    else:
-        return "High Stress", "stress-high", "😰"
-
 def calculate_stress_type(answers, categories):
-    """Calculate stress type (Eustress, Distress, No Stress)"""
-    
-    # Get scores for each category
     category_scores = {}
     for category_name, category_data in categories.items():
         scores = []
@@ -279,48 +285,23 @@ def calculate_stress_type(answers, categories):
                 try:
                     score = int(answers[q_id].split(" - ")[0])
                     scores.append(score)
-                except:
-                    continue
-        if scores:
-            category_scores[category_name] = sum(scores) / len(scores)
-    
-    if not category_scores:
-        return "No Stress", "stress-no-stress", "😌"
-    
-    # Calculate overall average
+                except: continue
+        if scores: category_scores[category_name] = sum(scores) / len(scores)
+    if not category_scores: return "No Stress", "stress-no-stress", "😌"
     avg_score = sum(category_scores.values()) / len(category_scores)
+    emotional = category_scores.get("😰 Emotional & Stress Indicators", 0)
+    physical = category_scores.get("🩺 Physical & Health Indicators", 0)
+    academic = category_scores.get("📚 Academic & Environment Stressors", 0)
     
-    # Check for distress patterns (high scores in emotional and physical categories)
-    emotional_score = category_scores.get("😰 Emotional & Stress Indicators", 0)
-    physical_score = category_scores.get("🩺 Physical & Health Indicators", 0)
-    academic_score = category_scores.get("📚 Academic & Environment Stressors", 0)
-    social_score = category_scores.get("💬 Social & Relationship Factors", 0)
-    
-    # Distress: High emotional and physical symptoms
-    if emotional_score >= 3.5 and physical_score >= 3.0:
-        return "Distress", "stress-distress", "😰"
-    
-    # Eustress: Moderate emotional with low physical symptoms, high academic engagement
-    elif emotional_score >= 2.5 and emotional_score < 3.5 and physical_score < 3.0 and academic_score >= 3.0:
-        return "Eustress", "stress-eustress", "💪"
-    
-    # No Stress: Low scores across all categories
-    elif avg_score < 2.0:
-        return "No Stress", "stress-no-stress", "😌"
-    
-    # Default classification
-    elif avg_score < 2.5:
-        return "No Stress", "stress-no-stress", "😌"
-    elif avg_score < 3.5:
-        return "Eustress", "stress-eustress", "💪"
-    else:
-        return "Distress", "stress-distress", "😰"
+    if emotional >= 3.5 and physical >= 3.0: return "Distress", "stress-distress", "😰"
+    elif 2.5 <= emotional < 3.5 and physical < 3.0 and academic >= 3.0: return "Eustress", "stress-eustress", "💪"
+    elif avg_score < 2.0: return "No Stress", "stress-no-stress", "😌"
+    elif avg_score < 2.5: return "No Stress", "stress-no-stress", "😌"
+    elif avg_score < 3.5: return "Eustress", "stress-eustress", "💪"
+    else: return "Distress", "stress-distress", "😰"
 
 def calculate_category_scores(answers, categories):
-    """Calculate stress scores by category"""
-    category_scores = {}
-    category_details = {}
-    
+    category_scores, category_details = {}, {}
     for category_name, category_data in categories.items():
         scores = []
         for q_id in category_data["ids"]:
@@ -328,765 +309,216 @@ def calculate_category_scores(answers, categories):
                 try:
                     score = int(answers[q_id].split(" - ")[0])
                     scores.append(score)
-                except:
-                    continue
-        
+                except: continue
         if scores:
             avg_score = sum(scores) / len(scores)
             category_scores[category_name] = avg_score
-            category_details[category_name] = {
-                "average": avg_score,
-                "max": max(scores) if scores else 0,
-                "min": min(scores) if scores else 0,
-                "count": len(scores)
-            }
-    
+            category_details[category_name] = {"average": avg_score, "max": max(scores), "min": min(scores), "count": len(scores)}
     return category_scores, category_details
 
 def get_top_stress_areas(answers, categories, question_texts):
-    """Identify top stress areas from all categories"""
     stress_items = []
-    
     for category_name, category_data in categories.items():
-        for idx, q_id in enumerate(category_data["ids"]):
+        for q_id in category_data["ids"]:
             if q_id in answers:
                 try:
                     score = int(answers[q_id].split(" - ")[0])
-                    if score >= 4:  # High stress (4 or 5)
-                        stress_items.append({
-                            "question": question_texts[q_id],
-                            "category": category_name,
-                            "score": score,
-                            "level": "High" if score == 5 else "Moderate-High"
-                        })
-                except:
-                    continue
-    
+                    if score >= 4:
+                        stress_items.append({"question": question_texts[q_id], "category": category_name, "score": score, "level": "High" if score == 5 else "Moderate-High"})
+                except: continue
     stress_items.sort(key=lambda x: x["score"], reverse=True)
     return stress_items[:5]
 
-# ---------- SAVE TO HISTORY FUNCTION ----------
-def save_test_history(answers, gender, gender_code, age, stress_type, stress_level, percentage):
-    """Save test results to user history"""
+def save_test_history(answers, gender, gender_code, age, stress_type, percentage):
     username = st.session_state.get("username", "default")
     history_file = f"user_history_{username}.json"
-    
-    # Load existing history
     history = []
     if os.path.exists(history_file):
         try:
-            with open(history_file, 'r') as f:
-                history = json.load(f)
-        except:
-            history = []
-    
-    # Create new entry
-    entry = {
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "gender": gender,
-        "gender_code": gender_code,
-        "age": age,
-        "stress_type": stress_type,
-        "stress_level": stress_level,
-        "percentage": percentage,
-        "answers": answers,
-        "total_questions": len(answers)
-    }
-    
-    # Add to history (newest first)
+            with open(history_file, 'r') as f: history = json.load(f)
+        except: history = []
+    entry = {"date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "gender": gender, "gender_code": gender_code, "age": age, "stress_type": stress_type, "percentage": percentage, "answers": answers, "total_questions": len(answers)}
     history.insert(0, entry)
-    
-    # Keep only last 50 entries
     history = history[:50]
-    
-    # Save back
-    with open(history_file, 'w') as f:
-        json.dump(history, f, indent=2)
-    
+    with open(history_file, 'w') as f: json.dump(history, f, indent=2)
     return entry
-
-# ---------- PDF GENERATION FUNCTION ----------
-def generate_pdf_report(gender, gender_code, age, answers, question_texts, categories, 
-                        total_score, percentage, stress_level, stress_type, 
-                        category_scores, top_stress_areas, svm_confidence=None):
-    """Generate PDF report using reportlab"""
-    
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                           rightMargin=72, leftMargin=72, 
-                           topMargin=72, bottomMargin=72)
-    
-    styles = getSampleStyleSheet()
-    story = []
-    
-    # Title
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.blue,
-        alignment=TA_CENTER,
-        spaceAfter=30
-    )
-    story.append(Paragraph("Stress Test Report", title_style))
-    story.append(Spacer(1, 12))
-    
-    # Date
-    date_style = ParagraphStyle(
-        'DateStyle',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.grey,
-        alignment=TA_CENTER
-    )
-    story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", date_style))
-    story.append(Spacer(1, 20))
-    
-    # User Information
-    story.append(Paragraph("Personal Information", styles['Heading2']))
-    story.append(Spacer(1, 10))
-    
-    user_data = [
-        ["Gender:", gender, "Gender Code:", str(gender_code)],
-        ["Age:", str(age), "Questions Answered:", str(len(answers))]
-    ]
-    
-    user_table = Table(user_data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
-    user_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOLD', (0, 0), (0, -1), True),
-        ('BOLD', (2, 0), (2, -1), True),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    story.append(user_table)
-    story.append(Spacer(1, 20))
-    
-    # Stress Type
-    story.append(Paragraph("Stress Type Classification", styles['Heading2']))
-    story.append(Spacer(1, 10))
-    
-    stress_type_colors = {
-        "Eustress": colors.blue,
-        "Distress": colors.red,
-        "No Stress": colors.green
-    }
-    
-    stress_type_style = ParagraphStyle(
-        'StressType',
-        parent=styles['Normal'],
-        fontSize=16,
-        textColor=stress_type_colors.get(stress_type, colors.black),
-        alignment=TA_CENTER,
-        spaceAfter=10
-    )
-    
-    story.append(Paragraph(f"<b>{stress_type}</b>", stress_type_style))
-    if svm_confidence is not None:
-        story.append(Paragraph(
-            f"<i>Model confidence: {svm_confidence*100:.1f}% (SVM classifier)</i>",
-            styles['Normal']
-        ))
-    story.append(Spacer(1, 10))
-    
-    # Stress Level
-    story.append(Paragraph(f"Stress Level: {stress_level} ({percentage:.1f}%)", styles['Normal']))
-    story.append(Paragraph(f"Total Score: {total_score}", styles['Normal']))
-    story.append(Spacer(1, 20))
-    
-    # Category Breakdown
-    story.append(Paragraph("Category Breakdown", styles['Heading2']))
-    story.append(Spacer(1, 10))
-    
-    if category_scores:
-        cat_data = [["Category", "Average Score (1-5)"]]
-        for cat, score in category_scores.items():
-            # Remove emoji for PDF
-            clean_cat = cat.split()[1] if len(cat.split()) > 1 else cat
-            cat_data.append([clean_cat, f"{score:.1f}"])
-        
-        cat_table = Table(cat_data, colWidths=[3*inch, 2*inch])
-        cat_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('BOLD', (0, 0), (-1, 0), True),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        story.append(cat_table)
-        story.append(Spacer(1, 20))
-    
-    # Top Stress Areas
-    if top_stress_areas:
-        story.append(Paragraph("Top Stress Areas", styles['Heading2']))
-        story.append(Spacer(1, 10))
-        
-        for i, item in enumerate(top_stress_areas[:3], 1):
-            story.append(Paragraph(f"{i}. {item['question']}", styles['Normal']))
-            story.append(Paragraph(f"   Score: {item['score']}/5 - {item['level']} Level", styles['Normal']))
-            story.append(Spacer(1, 6))
-        story.append(Spacer(1, 10))
-    
-    # Recommendations
-    story.append(Paragraph("Recommendations", styles['Heading2']))
-    story.append(Spacer(1, 10))
-    
-    if stress_type == "Eustress":
-        recommendations = [
-            "Channel your energy into challenging projects and goals",
-            "Maintain your healthy routines that are working well",
-            "Consider taking on new learning opportunities",
-            "Practice mindfulness and enjoy your accomplishments"
-        ]
-    elif stress_type == "Distress":
-        recommendations = [
-            "Seek support from a counselor, therapist, or trusted friend",
-            "Practice relaxation techniques daily (deep breathing, meditation, yoga)",
-            "Prioritize self-care: adequate sleep, nutrition, and exercise",
-            "Set boundaries and learn to say no",
-            "Break overwhelming tasks into smaller, manageable steps"
-        ]
-    else:
-        recommendations = [
-            "Stay engaged with new challenges to maintain growth",
-            "Continue developing coping skills for future challenges",
-            "Keep nurturing your relationships and social network",
-            "Practice gratitude and appreciate your balanced state"
-        ]
-    
-    for rec in recommendations:
-        story.append(Paragraph(f"• {rec}", styles['Normal']))
-        story.append(Spacer(1, 6))
-    story.append(Spacer(1, 20))
-    
-    # Detailed Answers
-    story.append(PageBreak())
-    story.append(Paragraph("Detailed Responses", styles['Heading1']))
-    story.append(Spacer(1, 10))
-    
-    answer_data = [["Q#", "Category", "Question", "Score", "Response"]]
-    for q_id, answer in sorted(answers.items()):
-        if q_id >= 3:
-            # Find category
-            category_name = "Other"
-            for cat_name, cat_data in categories.items():
-                if q_id in cat_data["ids"]:
-                    category_name = cat_name.split()[1] if len(cat_name.split()) > 1 else cat_name
-                    break
-            
-            question_text = question_texts.get(q_id, f"Q{q_id}")
-            if len(question_text) > 50:
-                question_text = question_text[:47] + "..."
-            
-            try:
-                score = int(answer.split(" - ")[0])
-            except:
-                score = "-"
-            
-            answer_data.append([str(q_id), category_name, question_text, str(score), answer])
-    
-    # Create table with smaller font for answers
-    answer_table = Table(answer_data, colWidths=[0.4*inch, 0.8*inch, 2.2*inch, 0.5*inch, 1.5*inch])
-    answer_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
-        ('BOLD', (0, 0), (-1, 0), True),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    story.append(answer_table)
-    
-    # Footer
-    footer_style = ParagraphStyle(
-        'Footer',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=colors.grey,
-        alignment=TA_CENTER
-    )
-    story.append(Spacer(1, 30))
-    story.append(Paragraph("This report is for informational purposes only.", footer_style))
-    story.append(Paragraph("If you're experiencing severe stress, please consult a mental health professional.", footer_style))
-    
-    # Build PDF
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
 
 # ---------- LOAD DATA ----------
 question_texts, categories = get_question_mapping()
 
 # ---------- CALCULATE RESULTS ----------
 total_score, percentage = calculate_stress_score(answers)
-stress_level, stress_class, stress_emoji = get_stress_level(percentage)
-# ---------- SVM-BASED STRESS TYPE PREDICTION ----------
 svm_confidence = None
 svm_probabilities = None
 svm_error = None
 
 try:
-    svm_output = predict_stress_type(
-        answers=answers,
-        gender_code=gender_code,
-        age=age
-    )
-    stress_type       = svm_output['type']
-    svm_confidence    = svm_output['confidence']
-    svm_probabilities = svm_output['probabilities']
+    svm_output = predict_stress_type(answers=answers, gender_code=gender_code, age=age)
+    stress_type, svm_confidence, svm_probabilities = svm_output['type'], svm_output['confidence'], svm_output['probabilities']
 except Exception as e:
     svm_error = str(e)
-    # Fallback to rule-based if SVM fails
     stress_type, _, _ = calculate_stress_type(answers, categories)
 
-# Map to CSS class + emoji
-STRESS_TYPE_STYLE = {
-    "Eustress":   ("stress-eustress",  "💪"),
-    "Distress":   ("stress-distress",  "😰"),
-    "No Stress":  ("stress-no-stress", "😌"),
-}
-stress_type_class, stress_type_emoji = STRESS_TYPE_STYLE.get(
-    stress_type, ("stress-no-stress", "😌")
-)
+STRESS_TYPE_STYLE = {"Eustress": ("stress-eustress", "💪"), "Distress": ("stress-distress", "😰"), "No Stress": ("stress-no-stress", "😌")}
+stress_type_class, stress_type_emoji = STRESS_TYPE_STYLE.get(stress_type, ("stress-no-stress", "😌"))
 
-if svm_error:
-    st.warning(f"⚠️ SVM model unavailable — using rule-based fallback. ({svm_error})")
+if svm_error: st.warning(f"⚠️ SVM model unavailable — using rule-based fallback. ({svm_error})")
 
 category_scores, category_details = calculate_category_scores(answers, categories)
 top_stress_areas = get_top_stress_areas(answers, categories, question_texts)
 
-# ---------- SAVE TO HISTORY (only if not viewing history AND not already saved) ----------
-should_save = (
-    not st.session_state.get("viewing_history", False) and 
-    not st.session_state.get("history_saved", False)
-)
-
+should_save = not st.session_state.get("viewing_history", False) and not st.session_state.get("history_saved", False)
 if should_save:
-    save_test_history(
-        answers=answers,
-        gender=gender,
-        gender_code=gender_code,
-        age=age,
-        stress_type=stress_type,
-        stress_level=stress_level,
-        percentage=percentage
-    )
-    st.session_state.history_saved = True  # Mark as saved to prevent duplicate
+    save_test_history(answers, gender, gender_code, age, stress_type, percentage)
+    st.session_state.history_saved = True
 
 # ---------- DISPLAY RESULTS ----------
 # Row 1: User Info
-st.subheader("👤 User Information")
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("Gender", gender)
-with col2:
-    st.metric("Gender Code", gender_code)
-with col3:
-    st.metric("Age", age)
-with col4:
-    st.metric("Questions Answered", len(answers))
-
-st.markdown("---")
+st.markdown(f"""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #4CAF50; margin-top: 15px; padding: 25px;">
+<h3 style="margin-top: 0; color: #000000; text-align: left; margin-bottom: 20px;">👤 User Information</h3>
+<div style="display: flex; justify-content: space-between; width: 100%;">
+<div style="flex: 1;"><div style="font-size: 14px; color: #666; margin-bottom: 5px;">Gender</div><div style="font-size: 28px; font-weight: 600; color: #333;">{gender}</div></div>
+<div style="flex: 1;"><div style="font-size: 14px; color: #666; margin-bottom: 5px;">Gender Code</div><div style="font-size: 28px; font-weight: 600; color: #333;">{gender_code}</div></div>
+<div style="flex: 1;"><div style="font-size: 14px; color: #666; margin-bottom: 5px;">Age</div><div style="font-size: 28px; font-weight: 600; color: #333;">{age}</div></div>
+<div style="flex: 1;"><div style="font-size: 14px; color: #666; margin-bottom: 5px;">Questions Answered</div><div style="font-size: 28px; font-weight: 600; color: #333;">{len(answers)}</div></div>
+</div></div>""", unsafe_allow_html=True)
 
 # Row 2: Stress Type Classification
-st.subheader("🧠 Your Stress Type Classification")
+if svm_confidence is not None:
+    conf_html = f'<div style="margin-top:15px;font-size:16px;color:#333;">🤖 <b>Model confidence:</b> {svm_confidence*100:.1f}%</div>'
+    source_note = "Predicted by SVM classifier"
+else:
+    conf_html = ""
+    source_note = "Based on rule-based analysis"
 
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    if svm_confidence is not None:
-        conf_html = (
-            f'<div style="margin-top:12px;font-size:15px;color:#333;">'
-            f'🤖 <b>Model confidence:</b> {svm_confidence*100:.1f}%'
-            f'</div>'
-        )
-        source_note = "Predicted by SVM classifier"
-    else:
-        conf_html = ""
-        source_note = "Based on rule-based analysis"
+st.markdown(f"""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #9C27B0; margin-top: 15px; text-align: center;">
+<h3 style="margin-top: 0; color: #000000; text-align: left; margin-bottom: 20px;">🧠 Your Stress Type Classification</h3>
+<div style="font-size: 72px; margin: 10px 0;">{stress_type_emoji}</div>
+<div class="stress-type-title {stress_type_class}" style="font-size: 32px; display: inline-block; padding: 10px 30px; margin-bottom: 15px;">{stress_type}</div>
+{conf_html}<div style="margin-top: 12px; font-size: 14px; color: #888;">{source_note}</div></div>""", unsafe_allow_html=True)
 
-    st.markdown(
-        f'<div class="stress-type-box">'
-        f'<div style="font-size:72px;margin:10px 0;">{stress_type_emoji}</div>'
-        f'<div class="stress-level {stress_type_class}" style="font-size:32px;">{stress_type}</div>'
-        f'{conf_html}'
-        f'<div style="margin-top:12px;font-size:14px;color:#888;">{source_note}</div>'
-        f'</div>',
-        unsafe_allow_html=True
-    )F
-
-
-# ---------- SVM Probability Breakdown Chart ----------
 if svm_probabilities:
     st.markdown("### 📊 Prediction Confidence Breakdown")
-    
-    prob_df = pd.DataFrame({
-        'Stress Type': list(svm_probabilities.keys()),
-        'Probability': [v * 100 for v in svm_probabilities.values()]
-    })
-    
-    color_map = {
-        'Distress':  '#F44336',
-        'Eustress':  '#2196F3',
-        'No Stress': '#4CAF50',
-    }
-    
-    fig_prob = go.Figure(go.Bar(
-        x=prob_df['Stress Type'],
-        y=prob_df['Probability'],
-        marker_color=[color_map.get(c, '#999') for c in prob_df['Stress Type']],
-        text=[f"{p:.1f}%" for p in prob_df['Probability']],
-        textposition='auto'
-    ))
-    fig_prob.update_layout(
-        yaxis_title="Probability (%)",
-        yaxis=dict(range=[0, 100]),
-        height=300,
-        margin=dict(l=20, r=20, t=30, b=20),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        showlegend=False
-    )
+    prob_df = pd.DataFrame({'Stress Type': list(svm_probabilities.keys()), 'Probability': [v * 100 for v in svm_probabilities.values()]})
+    color_map = {'Distress': '#F44336', 'Eustress': '#2196F3', 'No Stress': '#4CAF50'}
+    fig_prob = go.Figure(go.Bar(x=prob_df['Stress Type'], y=prob_df['Probability'], marker_color=[color_map.get(c, '#999') for c in prob_df['Stress Type']], text=[f"{p:.1f}%" for p in prob_df['Probability']], textposition='auto'))
+    fig_prob.update_layout(yaxis_title="Probability (%)", yaxis=dict(range=[0, 100]), height=300, margin=dict(l=20, r=20, t=30, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
     st.plotly_chart(fig_prob, use_container_width=True)
-    
     if svm_confidence is not None and svm_confidence < 0.6:
-        st.warning(
-            f"⚠️ Model confidence is only {svm_confidence*100:.1f}%. "
-            "Your responses span multiple stress patterns. "
-            "Consider retaking the test or consulting a professional."
-        )
-
+        st.warning(f"⚠️ Model confidence is only {svm_confidence*100:.1f}%. Your responses span multiple stress patterns. Consider retaking the test or consulting a professional.")
 
 # Stress Type Descriptions
-st.markdown("### 📖 Understanding Your Stress Type")
-
 if stress_type == "Eustress":
-    st.markdown("""
-        <div class="recommendation-box" style="border-left-color: #0D47A1;">
-            <h4>💪 Eustress - The "Good" Stress</h4>
-            <p><strong>What it means:</strong> You're experiencing positive, motivating stress that helps you perform at your best.</p>
-            <ul>
-                <li>You feel challenged but capable</li>
-                <li>This stress helps you focus and achieve goals</li>
-                <li>You're engaged and motivated</li>
-                <li>Your physical health indicators are generally good</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #0D47A1;"><h3>💪 Eustress - The "Good" Stress</h3><p><strong>What it means: You're experiencing positive, motivating stress that helps you perform at your best.</strong></p><ul><li>You feel challenged but capable</li><li>This stress helps you focus and achieve goals</li><li>You're engaged and motivated</li><li>Your physical health indicators are generally good</li></ul></div>""", unsafe_allow_html=True)
 elif stress_type == "Distress":
-    st.markdown("""
-        <div class="recommendation-box" style="border-left-color: #B71C1C;">
-            <h4>😰 Distress - The "Bad" Stress</h4>
-            <p><strong>What it means:</strong> You're experiencing overwhelming stress that's negatively affecting your well-being.</p>
-            <ul>
-                <li>You feel overwhelmed and unable to cope</li>
-                <li>Physical symptoms like headaches or sleep issues are present</li>
-                <li>Your emotional well-being is significantly impacted</li>
-                <li>This stress is interfering with your daily life</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
-else:  # No Stress
-    st.markdown("""
-        <div class="recommendation-box" style="border-left-color: #1B5E20;">
-            <h4>😌 No Stress - The Calm State</h4>
-            <p><strong>What it means:</strong> You're experiencing very low levels of stress in your life.</p>
-            <ul>
-                <li>You feel calm and balanced</li>
-                <li>You're managing daily challenges well</li>
-                <li>Your physical and emotional health are stable</li>
-                <li>You have good coping mechanisms</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #B71C1C;"><h3>😰 Distress - The "Bad" Stress</h3><p><strong>What it means: You're experiencing overwhelming stress that's negatively affecting your well-being.</strong></p><ul><li>You feel overwhelmed and unable to cope</li><li>Physical symptoms like headaches or sleep issues are present</li><li>Your emotional well-being is significantly impacted</li><li>This stress is interfering with your daily life</li></ul></div>""", unsafe_allow_html=True)
+else:
+    st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #1B5E20;"><h3>😌 No Stress - The Calm State</h3><p><strong>What it means: You're experiencing very low levels of stress in your life.</strong></p><ul><li>You feel calm and balanced</li><li>You're managing daily challenges well</li><li>Your physical and emotional health are stable</li><li>You have good coping mechanisms</li></ul></div>""", unsafe_allow_html=True)
 
-st.markdown("---")
-
-# Row 3: Overall Stress Score
-st.subheader("📈 Overall Stress Assessment")
-
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.markdown(f"""
-        <div style="text-align: center;">
-            <div class="stress-level {stress_class}">
-                {stress_level} ({percentage:.1f}%)
-            </div>
-            <div style="margin-top: 10px;">
-                <span style="font-size: 14px; color: #666;">
-                    Total Score: {total_score} / {len([a for a in answers if a >= 3]) * 5}
-                </span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("---")
-
-# Row 4: Stress Level Gauge Chart
-st.subheader("📊 Stress Level Gauge")
-
-fig = go.Figure(go.Indicator(
-    mode="gauge+number",
-    value=percentage,
-    title={'text': "Stress Level (%)"},
-    domain={'x': [0, 1], 'y': [0, 1]},
-    gauge={
-        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
-        'bar': {'color': "rgba(33, 150, 243, 0.8)"},
-        'bgcolor': "white",
-        'borderwidth': 2,
-        'bordercolor': "gray",
-        'steps': [
-            {'range': [0, 33], 'color': 'rgba(76, 175, 80, 0.3)'},
-            {'range': [33, 66], 'color': 'rgba(255, 193, 7, 0.3)'},
-            {'range': [66, 100], 'color': 'rgba(244, 67, 54, 0.3)'}
-        ],
-        'threshold': {
-            'line': {'color': "red", 'width': 4},
-            'thickness': 0.75,
-            'value': 90
-        }
-    }
-))
-
-fig.update_layout(
-    height=300,
-    margin=dict(l=20, r=20, t=40, b=20),
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)'
-)
-
-st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("---")
-
-# Row 5: Category Scores
-st.subheader("📊 Stress Breakdown by Category")
-
+# Row 5: Category Scores (Container Removed)
 if category_scores:
-    # Create a DataFrame for category scores
-    categories_list = list(category_scores.keys())
-    scores = list(category_scores.values())
-    
-    # Create color map
-    colors_list = ['#4CAF50' if s < 2.5 else '#FF9800' if s < 3.5 else '#F44336' for s in scores]
-    
-    fig2 = go.Figure(data=[
-        go.Bar(
-            x=categories_list,
-            y=scores,
-            marker_color=colors_list,
-            text=[f"{s:.1f}" for s in scores],
-            textposition='auto',
-            name='Average Score'
-        )
-    ])
-    
-    fig2.update_layout(
-        title="Average Stress Score by Category (1-5 scale)",
-        xaxis_title="Category",
-        yaxis_title="Average Score",
-        yaxis=dict(range=[0, 5]),
-        height=400,
-        margin=dict(l=20, r=20, t=40, b=20),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        showlegend=False
-    )
-    
-    st.plotly_chart(fig2, use_container_width=True)
-    
-    # Show category details
+    st.markdown("### 📊 Stress Breakdown by Category")
+    col1, col2, col3 = st.columns([1, 6, 1])
+    with col2:
+        categories_list = list(category_scores.keys())
+        scores = list(category_scores.values())
+        colors_list = ['#4CAF50' if s < 2.5 else '#FF9800' if s < 3.5 else '#F44336' for s in scores]
+        fig2 = go.Figure(data=[go.Bar(x=categories_list, y=scores, marker_color=colors_list, text=[f"{s:.1f}" for s in scores], textposition='auto', name='Average Score')])
+        fig2.update_layout(title="Average Stress Score by Category (1-5 scale)", xaxis_title="Category", yaxis_title="Average Score", yaxis=dict(range=[0, 5]), height=350, margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
+        st.plotly_chart(fig2, use_container_width=True)
     with st.expander("📋 View Category Details"):
-        detail_data = []
-        for category_name, details in category_details.items():
-            detail_data.append({
-                "Category": category_name,
-                "Average Score": f"{details['average']:.1f}",
-                "Highest Score": details['max'],
-                "Lowest Score": details['min'],
-                "Questions": details['count']
-            })
-        
-        df_details = pd.DataFrame(detail_data)
+        df_details = pd.DataFrame([{"Category": name, "Average Score": f"{d['average']:.1f}", "Highest Score": d['max'], "Lowest Score": d['min'], "Questions": d['count']} for name, d in category_details.items()])
         st.dataframe(df_details, use_container_width=True, hide_index=True)
 
-st.markdown("---")
-
 # Row 6: Top Stress Areas
-st.subheader("🎯 Top Stress Areas")
-
 if top_stress_areas:
-    st.write("Here are your top stress areas that may need attention:")
-    
-    for i, item in enumerate(top_stress_areas, 1):
-        color = "#F44336" if item["level"] == "High" else "#FF9800"
-        icon = "🔴" if item["level"] == "High" else "🟠"
-        
-        # Get category icon
-        category_icon = ""
-        for cat_name in categories.keys():
-            if cat_name == item["category"]:
-                category_icon = cat_name.split()[0]
-                break
-        
-        st.markdown(f"""
-            <div class="result-card result-card-danger" style="border-left-color: {color};">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="font-size: 24px;">{icon}</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; font-size: 16px;">{item['question']}</div>
-                        <div style="font-size: 14px; color: #666;">
-                            {category_icon} {item['category']} • Score: {item['score']}/5 - {item['level']} Level
-                        </div>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+    areas_html = "".join([f'<div style="display: flex; align-items: flex-start; gap: 15px; padding: 12px 0; margin-bottom: 5px;"><div style="font-size: 24px; margin-top: 2px;">{"🔴" if item["level"] == "High" else "🟠"}</div><div style="flex: 1;"><div style="font-weight: 600; font-size: 16px; color: #333;">{item["question"]}</div><div style="font-size: 14px; color: #666; margin-top: 4px;">{item["category"]} • Score: {item["score"]}/5 - {item["level"]} Level</div></div></div>' for item in top_stress_areas])
+    st.markdown(f"""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #F44336; margin-top: 15px;"><h3 style="margin-top: 0; color: #000000;">🎯 Top Stress Areas</h3><p style="color: #666; margin-bottom: 15px;">Here are your top stress areas that may need attention:</p>{areas_html}</div>""", unsafe_allow_html=True)
 else:
     st.info("✅ No high-stress areas identified. Keep up the good work!")
 
-st.markdown("---")
-
-# Row 7: Recommendations based on Stress Type
-st.subheader("💡 Personalized Recommendations")
-
+# Row 7: Recommendations
 if stress_type == "Eustress":
-    st.markdown("""
-        <div class="recommendation-box" style="border-left-color: #0D47A1;">
-            <h4>🌟 Maximizing Your Eustress</h4>
-            <ul>
-                <li><strong>Channel your energy:</strong> Use this motivating stress to tackle challenging projects and goals</li>
-                <li><strong>Maintain balance:</strong> Continue your healthy routines that are working well</li>
-                <li><strong>Set new challenges:</strong> Consider taking on new learning opportunities or responsibilities</li>
-                <li><strong>Practice mindfulness:</strong> Stay present and enjoy your accomplishments</li>
-                <li><strong>Share your strategies:</strong> Help others who may be struggling with stress</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #0D47A1;">
+    <h3 style="margin-top: 0; color: #000000;">💡 Personalized Recommendations</h3>
+    <ul>
+        <li><strong>Self care:</strong> Prioritize self-care activities to maintain well-being and prevent eustress from turning into distress</li>
+        <li><strong>Channel your energy:</strong> Use this motivating stress to tackle challenging projects and goals</li>
+        <li><strong>Maintain balance:</strong> Continue your healthy routines that are working well</li>
+        <li><strong>Set new challenges:</strong> Consider taking on new learning opportunities or responsibilities</li>
+        <li><strong>Practice mindfulness:</strong> Stay present and enjoy your accomplishments</li>
+        <li><strong>Share your strategies:</strong> Help others who may be struggling with stress</li>
+    </ul>
+    </div>""", unsafe_allow_html=True)
 elif stress_type == "Distress":
-    st.markdown("""
-        <div class="recommendation-box" style="border-left-color: #B71C1C;">
-            <h4>🆘 Managing Distress - Immediate Steps</h4>
-            <ul>
-                <li><strong>Seek support:</strong> Talk to a counselor, therapist, or trusted friend</li>
-                <li><strong>Practice relaxation:</strong> Try deep breathing, meditation, or yoga daily</li>
-                <li><strong>Prioritize self-care:</strong> Ensure adequate sleep, nutrition, and exercise</li>
-                <li><strong>Set boundaries:</strong> Learn to say no and protect your time</li>
-                <li><strong>Break tasks down:</strong> Divide overwhelming tasks into smaller, manageable steps</li>
-                <li><strong>Consider professional help:</strong> If distress persists, seek professional mental health support</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
-else:  # No Stress
-    st.markdown("""
-        <div class="recommendation-box" style="border-left-color: #1B5E20;">
-            <h4>🌱 Maintaining Your Well-being</h4>
-            <ul>
-                <li><strong>Stay engaged:</strong> Consider new challenges to maintain growth and development</li>
-                <li><strong>Build resilience:</strong> Continue developing coping skills for future challenges</li>
-                <li><strong>Maintain connections:</strong> Keep nurturing your relationships and social network</li>
-                <li><strong>Practice gratitude:</strong> Appreciate your current balanced state</li>
-                <li><strong>Plan ahead:</strong> Set goals that will keep you motivated and fulfilled</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #B71C1C;">
+    <h3 style="margin-top: 0; color: #000000;">💡 Personalized Recommendations</h3>
+    <ul>
+        <li><strong>Seek support:</strong> Talk to a counselor, therapist, or trusted friend</li>
+        <li><strong>Practice relaxation:</strong> Try deep breathing, meditation, or yoga daily</li>
+        <li><strong>Prioritize self-care:</strong> Ensure adequate sleep, nutrition, and exercise</li>
+        <li><strong>Set boundaries:</strong> Learn to say no and protect your time</li>
+        <li><strong>Break tasks down:</strong> Divide overwhelming tasks into smaller, manageable steps</li>
+        <li><strong>Consider professional help:</strong> If distress persists, seek professional mental health support</li>
+        <li><strong>Self Assessment:</strong> Regularly assess your stress levels and triggers</li>
+    </ul>
+    </div>""", unsafe_allow_html=True)
+else:
+    st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #1B5E20;">
+    <h3 style="margin-top: 0; color: #000000;">💡 Personalized Recommendations</h3>
+    <ul>
+        <li><strong>Stay engaged:</strong> Consider new challenges to maintain growth and development</li>
+        <li><strong>Build resilience:</strong> Continue developing coping skills for future challenges</li>
+        <li><strong>Maintain connections:</strong> Keep nurturing your relationships and social network</li>
+        <li><strong>Practice gratitude:</strong> Appreciate your current balanced state</li>
+        <li><strong>Plan ahead:</strong> Set goals that will keep you motivated and fulfilled</li>
+    </ul>
+    </div>""", unsafe_allow_html=True)
 
-# Specific recommendations based on top stress areas
 if top_stress_areas:
-    st.markdown("### 🎯 Specific Recommendations for Your Top Stress Areas:")
-    
+    specific_tips_html = ""
+    shown_tips = set()
     for item in top_stress_areas[:3]:
-        question_lower = item["question"].lower()
-        
-        if "sleep" in question_lower:
-            st.info("💤 **Sleep Tips**: Maintain a consistent sleep schedule, avoid screens before bed, create a relaxing bedtime routine")
-        elif "anxiety" in question_lower or "tension" in question_lower:
-            st.info("🧘 **Anxiety Management**: Practice deep breathing exercises, try mindfulness meditation, talk to someone you trust")
-        elif "competition" in question_lower or "peers" in question_lower:
-            st.info("🏆 **Peer Competition**: Focus on your personal growth, set realistic goals, celebrate your own achievements, avoid comparing yourself to others")
-        elif "academic" in question_lower or "workload" in question_lower or "classes" in question_lower:
-            st.info("📚 **Academic Stress**: Break tasks into smaller chunks, use a planner, take regular study breaks, seek help when needed")
-        elif "relationship" in question_lower:
-            st.info("❤️ **Relationships**: Communicate openly, set healthy boundaries, spend quality time with supportive people")
-        elif "confidence" in question_lower or "performance" in question_lower:
-            st.info("💪 **Building Confidence**: Celebrate small wins, focus on progress not perfection, seek feedback constructively")
-        elif "health" in question_lower or "illness" in question_lower:
-            st.info("🏥 **Health Concerns**: Schedule a check-up with a healthcare provider, maintain a healthy diet, stay hydrated")
-        elif "lonely" in question_lower or "isolated" in question_lower:
-            st.info("🤝 **Social Connection**: Join a club or group activity, reach out to friends, consider volunteering")
-        elif "environment" in question_lower or "hostel" in question_lower or "working" in question_lower:
-            st.info("🏠 **Environment**: Create a comfortable workspace, talk to management about concerns, consider relocation options")
-        elif "heartbeat" in question_lower or "palpitations" in question_lower:
-            st.info("❤️ **Physical Symptoms**: Practice deep breathing, reduce caffeine intake, consult a doctor if symptoms persist")
-        elif "irritated" in question_lower:
-            st.info("😤 **Irritability**: Practice mindfulness, take breaks when feeling overwhelmed, identify triggers")
-        elif "extracurricular" in question_lower or "activities" in question_lower:
-            st.info("⚖️ **Work-Life Balance**: Prioritize activities, learn to say no, focus on quality over quantity")
-        elif "weight" in question_lower:
-            st.info("⚖️ **Weight Management**: Consult a nutritionist, maintain a balanced diet, regular exercise, avoid crash diets")
-        else:
-            st.info(f"💡 **Recommendation**: Consider seeking support from a counselor or trusted advisor")
-
-st.markdown("---")
+        q_lower = item["question"].lower()
+        if "sleep" in q_lower and "sleep" not in shown_tips: specific_tips_html += "<li><strong>Sleep Tips:</strong> Maintain a consistent sleep schedule.</li>"; shown_tips.add("sleep")
+        elif ("anxiety" in q_lower or "tension" in q_lower) and "anxiety" not in shown_tips: specific_tips_html += "<li><strong>Anxiety Management:</strong> Practice deep breathing exercises.</li>"; shown_tips.add("anxiety")
+        elif ("competition" in q_lower or "peers" in q_lower) and "competition" not in shown_tips: specific_tips_html += "<li><strong>Peer Competition:</strong> Focus on your personal growth.</li>"; shown_tips.add("competition")
+        elif ("academic" in q_lower or "workload" in q_lower or "classes" in q_lower) and "academic" not in shown_tips: specific_tips_html += "<li><strong>Academic Stress:</strong> Break tasks into smaller chunks.</li>"; shown_tips.add("academic")
+        elif "relationship" in q_lower and "relationship" not in shown_tips: specific_tips_html += "<li><strong>Relationships:</strong> Communicate openly.</li>"; shown_tips.add("relationship")
+        elif ("confidence" in q_lower or "performance" in q_lower) and "confidence" not in shown_tips: specific_tips_html += "<li><strong>Building Confidence:</strong> Celebrate small wins.</li>"; shown_tips.add("confidence")
+        elif ("health" in q_lower or "illness" in q_lower) and "health" not in shown_tips: specific_tips_html += "<li><strong>Health Concerns:</strong> Schedule a check-up.</li>"; shown_tips.add("health")
+        elif ("lonely" in q_lower or "isolated" in q_lower) and "lonely" not in shown_tips: specific_tips_html += "<li><strong>Social Connection:</strong> Join a club or group activity.</li>"; shown_tips.add("lonely")
+        elif ("environment" in q_lower or "hostel" in q_lower or "working" in q_lower) and "environment" not in shown_tips: specific_tips_html += "<li><strong>Environment:</strong> Create a comfortable workspace.</li>"; shown_tips.add("environment")
+        elif ("heartbeat" in q_lower or "palpitations" in q_lower) and "heartbeat" not in shown_tips: specific_tips_html += "<li><strong>Physical Symptoms:</strong> Practice deep breathing.</li>"; shown_tips.add("heartbeat")
+        elif "irritated" in q_lower and "irritated" not in shown_tips: specific_tips_html += "<li><strong>Irritability:</strong> Practice mindfulness.</li>"; shown_tips.add("irritated")
+        elif ("extracurricular" in q_lower or "activities" in q_lower) and "activities" not in shown_tips: specific_tips_html += "<li><strong>Work-Life Balance:</strong> Prioritize activities.</li>"; shown_tips.add("activities")
+        elif "weight" in q_lower and "weight" not in shown_tips: specific_tips_html += "<li><strong>Weight Management:</strong> Consult a nutritionist.</li>"; shown_tips.add("weight")
+    
+    if specific_tips_html:
+        st.markdown(f"""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #FF9800; margin-top: 15px;"><h3 style="margin-top: 0; color: #000000;">🎯 Specific Recommendations for Your Top Stress Areas</h3><ul style="margin-bottom: 0;">{specific_tips_html}</ul></div>""", unsafe_allow_html=True)
 
 # Row 8: Detailed Response Summary
-st.subheader("📝 Detailed Response Summary")
-
-# Create a DataFrame for all answers with category information
 response_data = []
 for q_id, answer in sorted(answers.items()):
-    if q_id >= 3:  # Only stress questions
-        # Find which category this question belongs to
-        category_name = "Other"
-        for cat_name, cat_data in categories.items():
-            if q_id in cat_data["ids"]:
-                category_name = cat_name
-                break
-        
-        # Get question text
+    if q_id >= 3:
+        category_name = next((cat for cat, data in categories.items() if q_id in data["ids"]), "Other")
         question_text = question_texts.get(q_id, f"Q{q_id}")
-        
-        # Extract score
-        try:
-            score = int(answer.split(" - ")[0])
-        except:
-            score = "-"
-        
-        response_data.append({
-            "Question ID": q_id,
-            "Category": category_name,
-            "Question": question_text[:60] + ("..." if len(question_text) > 60 else ""),
-            "Score": score,
-            "Response": answer
-        })
+        try: score = int(answer.split(" - ")[0])
+        except: score = "-"
+        response_data.append({"Question ID": q_id, "Category": category_name, "Question": question_text[:60] + ("..." if len(question_text) > 60 else ""), "Score": score, "Response": answer})
 
 if response_data:
-    df_responses = pd.DataFrame(response_data)
-    
-    with st.expander("View All Responses"):
-        st.dataframe(
-            df_responses,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Question ID": st.column_config.NumberColumn("Q#"),
-                "Category": st.column_config.TextColumn("Category"),
-                "Question": st.column_config.TextColumn("Question"),
-                "Score": st.column_config.NumberColumn("Score (1-5)"),
-                "Response": st.column_config.TextColumn("Your Answer")
-            }
-        )
-
-st.markdown("---")
+    st.markdown("""<div class="recommendation-box" style="background: #FFFFFF; border-left-color: #FF9800; margin-top: 15px; padding-bottom: 5px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0;"><h3 style="margin-top: 0; color: #000000; text-align: left; margin-bottom: 10px;">📝 Detailed Response Summary</h3></div>""", unsafe_allow_html=True)
+    with st.container():
+        st.markdown("""<style>div[data-testid="stExpander"] {background-color: #FFFFFF; border-left: 4px solid #FF9800; border-radius: 0 0 12px 12px; padding: 0px 15px 15px 15px; margin-top: -15px;}</style>""", unsafe_allow_html=True)
+        with st.expander("View All Responses"):
+            df_responses = pd.DataFrame(response_data)
+            st.dataframe(df_responses, use_container_width=True, hide_index=True, column_config={"Question ID": st.column_config.NumberColumn("Q#"), "Category": st.column_config.TextColumn("Category"), "Question": st.column_config.TextColumn("Question"), "Score": st.column_config.NumberColumn("Score (1-5)"), "Response": st.column_config.TextColumn("Your Answer")})
 
 # Row 9: Action Buttons
-col1, col2, col3 = st.columns(3)  # Changed to 3 columns
+st.write("")
+
+col1, col2, col3, col4 = st.columns([1, 5, 1, 1])
 
 with col1:
     if st.button("🔄 Retake Test", use_container_width=True):
@@ -1102,60 +534,18 @@ with col1:
         st.session_state.history_saved = False
         st.switch_page("pages/test_questions.py")
 
-with col2:
-    # PDF Download Button
-    pdf_buffer = generate_pdf_report(
-        gender, gender_code, age, answers, question_texts, categories,
-        total_score, percentage, stress_level, stress_type,
-        category_scores, top_stress_areas, svm_confidence=svm_confidence
-    )
-    
-    st.download_button(
-        label="📄 Download PDF",
-        data=pdf_buffer,
-        file_name=f"stress_test_report_{age}_{gender}_{datetime.now().strftime('%Y%m%d')}.pdf",
-        mime="application/pdf",
-        use_container_width=True,
-        type="primary"
-    )
-
 with col3:
-    # TXT Report
-    txt_report = generate_txt_report(
-        gender, gender_code, age, answers, question_texts, categories,
-        total_score, percentage, stress_level, stress_type,
-        category_scores, top_stress_areas
-    )
-    
-    st.download_button(
-        label="📄 Download TXT",
-        data=txt_report,
-        file_name=f"stress_test_report_{age}_{gender}.txt",
-        mime="text/plain",
-        use_container_width=True
-    )
+    pdf_buffer = generate_pdf_report(gender, gender_code, age, answers, question_texts, categories, total_score, percentage, stress_type, category_scores, top_stress_areas, svm_confidence=svm_confidence)
+    st.download_button(label="📄 Download PDF", data=pdf_buffer, file_name=f"stress_test_report_{age}_{gender}_{datetime.now().strftime('%Y%m%d')}.pdf", mime="application/pdf", use_container_width=True, type="primary")
 
-# ---------- HOME AND LOGOUT BUTTONS ----------
-st.divider()
-
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col2:
-    if st.button("🏠 Home", use_container_width=True):
-        st.session_state.viewing_history = False
-        st.switch_page("pages/test_page.py")
-
-st.divider()
-
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col2:
-    if st.button("🚪 Logout", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.session_state.user_id = ""
-        st.rerun()
+with col4:
+    txt_report = generate_txt_report(gender, gender_code, age, answers, question_texts, categories, total_score, percentage, stress_type, category_scores, top_stress_areas)
+    st.download_button(label="📄 Download TXT", data=txt_report, file_name=f"stress_test_report_{age}_{gender}.txt", mime="text/plain", use_container_width=True)
 
 # ---------- FOOTER ----------
-st.markdown("---")
-st.caption("💡 This report is for informational purposes only. If you're experiencing severe stress, please consult a mental health professional.")
+st.markdown(
+    "<p style='color: black; font-weight: bold; font-size: 14px;'>"
+    "💡 This report is for informational purposes only. If you're experiencing severe stress, please consult a mental health professional."
+    "</p>", 
+    unsafe_allow_html=True
+)
