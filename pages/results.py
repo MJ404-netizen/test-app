@@ -102,8 +102,28 @@ hide_streamlit_style = f"""
             align-items: center !important;
             justify-content: center !important;
             font-weight: 600 !important;
+            font-size: 16px !important; 
             border: none !important;
             transition: all 0.2s ease !important;
+        }}
+
+        /* Force the text inside these specific buttons to be 16px */
+        div[data-testid="stHorizontalBlock"] div.stButton > button p,
+        div[data-testid="stHorizontalBlock"] div.stDownloadButton > button p {{
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            margin: 0 !important;
+            color: white !important;
+        }}
+
+        /* ---------- TXT DOWNLOAD BUTTON TEXT COLOUR ---------- */
+        .st-key-download_txt_btn button,
+        .st-key-download_txt_btn button *,
+        .st-key-download_txt_btn button p,
+        .st-key-download_txt_btn button span,
+        .st-key-download_txt_btn button div {{
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important;
         }}
 
         /* Hover effects for action buttons */
@@ -111,6 +131,34 @@ hide_streamlit_style = f"""
         div[data-testid="stHorizontalBlock"] div.stDownloadButton > button:hover {{
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15) !important;
+        }}
+
+        /* ---------- GO TO LOGIN BUTTON (When not logged in) ---------- */
+        /* This targets buttons OUTSIDE the horizontal block (like Go to Login) */
+        div.stButton > button {{
+            width: 100% !important;
+            border-radius: 60px !important;
+            padding: 15px 20px !important;
+            font-size: 24px !important;
+            font-weight: 700 !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: all 0.25s ease !important;
+            text-align: center !important;
+            min-height: 60px !important;
+            background: #4CAF50 !important;
+            color: white !important;
+            margin-top: 15px !important;
+        }}
+        div.stButton > button:hover {{
+            background: #43A047 !important;
+            box-shadow: 0 14px 34px rgba(76, 175, 80, 0.40) !important;
+            transform: translateY(-3px);
+        }}
+        div.stButton > button p {{
+            color: white !important;
+            font-size: 24px !important;
+            font-weight: 700 !important;
         }}
 
         /* ---------- FORCE NAVIGATION TO ABSOLUTE CORNERS ---------- */
@@ -576,14 +624,21 @@ if is_viewing_history:
             total_score, percentage, stress_type, category_scores, top_stress_areas,
             current_time_str
         )
-        st.download_button(label="📄 Download TXT", data=txt_report, file_name=f"stress_test_report_{age}_{gender}_{file_date_str}.txt", mime="text/plain", use_container_width=True)
+        st.download_button(
+            label="📄 Download TXT", 
+            data=txt_report, 
+            file_name=f"stress_test_report_{age}_{gender}_{file_date_str}.txt", 
+            mime="text/plain", 
+            use_container_width=True,
+            key="download_txt_btn" # <--- ADDED THIS KEY
+        )
 
 else:
     # Original Layout with Retake Button
     col1, col2, col3, col4 = st.columns([1, 5, 1, 1])
     
     with col1:
-        if st.button("🔄 Retake Test", use_container_width=True):
+        if st.button("🔄 Retake Test", key="retake_test_btn", use_container_width=True):
             st.session_state.current_q_index = 0
             st.session_state.answers = {}
             st.session_state.user_responses = {}
@@ -611,7 +666,14 @@ else:
             total_score, percentage, stress_type, category_scores, top_stress_areas,
             current_time_str
         )
-        st.download_button(label="📄 Download TXT", data=txt_report, file_name=f"stress_test_report_{age}_{gender}_{file_date_str}.txt", mime="text/plain", use_container_width=True)
+        st.download_button(
+            label="📄 Download TXT", 
+            data=txt_report, 
+            file_name=f"stress_test_report_{age}_{gender}_{file_date_str}.txt", 
+            mime="text/plain", 
+            use_container_width=True,
+            key="download_txt_btn" # <--- ADDED THIS KEY
+        )
 
 # ---------- FOOTER ----------
 st.markdown(

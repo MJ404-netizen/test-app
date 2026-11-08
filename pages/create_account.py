@@ -29,6 +29,13 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    try:
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_ci "
+            "ON users(username COLLATE NOCASE)"
+        )
+    except sqlite3.IntegrityError:
+        pass
     conn.commit()
     conn.close()
 
@@ -47,39 +54,66 @@ def create_user(username, email, password):
         conn.commit()
         return True, "Account created successfully!"
     except sqlite3.IntegrityError as e:
-        if "username" in str(e):
-            return False, "Username already exists. Please choose another."
-        elif "email" in str(e):
+        msg = str(e).lower()
+        if "username" in msg:
+            return False, "This username is already taken. Please choose another."
+        elif "email" in msg:
             return False, "Email already registered. Please login."
         return False, "An error occurred. Please try again."
     finally:
         conn.close()
 
+# ---------- EMAIL VALIDATION (REGEX) ----------
 def validate_email_format(email):
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
+    pattern = (
+        r"^(?=.{1,254}$)"
+        r"(?!.*\.\.)"
+        r"(?=.{1,64}@)"
+        r"[A-Za-z0-9]"
+        r"(?:[A-Za-z0-9._%+\-]*[A-Za-z0-9])?"
+        r"@"
+        r"(?:[A-Za-z0-9]"
+        r"(?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+"
+        r"[A-Za-z]{2,24}$"
+    )
+    return re.fullmatch(pattern, email) is not None
+
+# ---------- PASSWORD VALIDATION ----------
+def validate_password_strength(password):
+    missing = []
+    if len(password) < 8:
+        missing.append("at least 8 characters")
+    if not re.search(r"[A-Za-z]", password):
+        missing.append("at least 1 letter")
+    if not re.search(r"\d", password):
+        missing.append("at least 1 number (0–9)")
+    if not re.search(r"[^A-Za-z0-9\s]", password):
+        missing.append("at least 1 symbol (e.g. ! @ # $ % ^ & *)")
+    if re.search(r"\s", password):
+        missing.append("no spaces")
+    return (len(missing) == 0), missing
 
 # ---------- EMAIL VERIFICATION FUNCTION ----------
 def verify_email(email):
     try:
         url = "https://rapid-email-verifier.fly.dev/api/validate"
         response = requests.post(url, json={"email": email}, timeout=10)
-        
+
         if response.status_code == 200:
             data = response.json()
             if data.get("valid", False):
                 return True, "✅ Email verified successfully!"
             else:
                 if data.get("typo_suggestion"):
-                    return False, f"❌ Did you mean: **{data['typo_suggestion']}**?"
+                    return False, f"Did you mean: **{data['typo_suggestion']}**?"
                 elif data.get("disposable", False):
-                    return False, "❌ Please use a permanent email address (not temporary)."
+                    return False, "Please use a permanent email address (not temporary)."
                 else:
-                    return False, "❌ This email address appears to be invalid."
+                    return False, "This email address appears to be invalid."
         else:
-            return None, "⚠️ Verification service unavailable. Proceeding with format check only."
+            return None, "Verification service unavailable — proceeding with format check only."
     except Exception as e:
-        return None, f"⚠️ Could not verify email: {str(e)}"
+        return None, f"Could not verify email: {str(e)}"
 
 # ---------- INITIALIZE DATABASE ----------
 init_db()
@@ -98,28 +132,25 @@ hide_streamlit_style = f"""
         #MainMenu {{visibility: hidden;}}
         footer {{visibility: hidden;}}
         header {{visibility: hidden;}}
-        
-        /* --- REMOVE TOP SPACING --- */
+
         .block-container {{
-            padding-top: 0rem !important; 
+            padding-top: 0rem !important;
             padding-bottom: 2rem !important;
         }}
         .stApp > header {{
             display: none !important;
         }}
-        /* --------------------------- */
-        
+
         .stApp {{
             background: linear-gradient(#c7f9ff, #dafbff, #fbffdb, #d5f7cb, #c7f9ff);
         }}
 
-        /* ---------- FORCE HOME BUTTON TO ABSOLUTE CORNER (HIGHER) ---------- */
         div[data-testid="stHorizontalBlock"]:has(.st-key-home_button) {{
             position: relative !important;
             display: flex !important;
             justify-content: flex-start !important;
             align-items: center !important;
-            margin-top: 3rem !important; 
+            margin-top: 3rem !important;
             margin-bottom: 1rem !important;
         }}
 
@@ -157,7 +188,6 @@ hide_streamlit_style = f"""
             display: none !important;
         }}
 
-        /* ---------- PURE WHITE INPUT CONTAINERS ---------- */
         div[data-testid="stTextInput"] div[data-baseweb="input"],
         div[data-testid="stTextInput"] div[data-baseweb="base-input"],
         div[data-testid="stTextInput"] div[data-baseweb="input"] > div,
@@ -197,7 +227,6 @@ hide_streamlit_style = f"""
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15) !important;
         }}
 
-        /* ---------- INPUT LABELS — SAME SIZE AS LOGIN PAGE ---------- */
         div[data-testid="stTextInput"] label p {{
             font-size: 20px !important;
             font-weight: 700 !important;
@@ -205,7 +234,6 @@ hide_streamlit_style = f"""
             letter-spacing: 0.3px !important;
         }}
 
-        /* ---------- SHORTER CREATE ACCOUNT BUTTON ---------- */
         div.stButton > button {{
             border-radius: 60px !important;
             padding: 12px 30px !important;
@@ -234,13 +262,20 @@ hide_streamlit_style = f"""
             margin: 0 !important;
         }}
 
-        /* Center the button inside its container without full width */
         div[data-testid="stButton"] {{
             display: flex !important;
             justify-content: center !important;
         }}
 
-        /* ---------- MOBILE RESPONSIVENESS ---------- */
+        .field-error {{
+            color: #D32F2F !important;
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            margin-top: -8px !important;
+            margin-bottom: 12px !important;
+            padding-left: 4px !important;
+        }}
+
         @media (max-width: 768px) {{
             div[data-testid="stTextInput"] label p {{
                 font-size: 18px !important;
@@ -262,73 +297,245 @@ with st.container():
 # ---------- SESSION STATE ----------
 if "account_created" not in st.session_state:
     st.session_state.account_created = False
+if "show_success" not in st.session_state:
+    st.session_state.show_success = False
+if "created_username" not in st.session_state:
+    st.session_state.created_username = ""
+if "created_email" not in st.session_state:
+    st.session_state.created_email = ""
+
+for _k in ("err_username", "err_email", "err_password", "err_confirm"):
+    st.session_state.setdefault(_k, "")
 
 # ---------- MAIN CONTENT ----------
-st.title("📝 Create Account")
-
 # Check if user is already logged in
 if "logged_in" in st.session_state and st.session_state.logged_in:
     st.success(f"You are already logged in as {st.session_state.get('username', 'User')}!")
     if st.button("Go to Dashboard"):
-        st.switch_page("pages/dashboard.py")
+        st.switch_page("pages/test_page.py")
+    st.stop()
+
+# ---------- SUCCESS PAGE ----------
+if st.session_state.show_success:
+    st.title("🎉 Account Created!")
+    st.success("Your account has been successfully created.")
+    
+    st.markdown(f"""
+    <div style="background-color: #F1F8E9; padding: 20px; border-radius: 10px; border-left: 5px solid #4CAF50; margin-bottom: 20px;">
+        <p style="margin: 0; font-size: 16px; color: #333;"><strong>Username:</strong> {st.session_state.created_username}</p>
+        <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Email:</strong> {st.session_state.created_email}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("You can now log in using the credentials you just created.")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🔐 Go to Login", use_container_width=True):
+            # Reset all states
+            st.session_state.show_success = False
+            st.session_state.account_created = False
+            st.session_state.created_username = ""
+            st.session_state.created_email = ""
+            for _k in ("err_username", "err_email", "err_password", "err_confirm"):
+                st.session_state[_k] = ""
+            st.switch_page("pages/login.py")
+            
+    # Stop rendering the form
     st.stop()
 
 # ---------- CREATE ACCOUNT FORM ----------
-username = st.text_input("Create a username", placeholder="Choose a unique username")
-email = st.text_input("Enter your email", placeholder="you@example.com")
-password = st.text_input("Create password", type="password", placeholder="Min 6 characters")
-confirm = st.text_input("Confirm password", type="password", placeholder="Re-enter password")
+st.title("📝 Create Account")
 
-# Main submit button — centered column layout instead of full-width
+username = st.text_input(
+    "Create a username",
+    placeholder="3–20 chars, letters/digits/underscore",
+    key="input_username",
+)
+if st.session_state.err_username:
+    st.markdown(
+        f"<div class='field-error'>⚠️ {st.session_state.err_username}</div>",
+        unsafe_allow_html=True,
+    )
+
+email = st.text_input(
+    "Enter your email",
+    placeholder="name@gmail.com",
+    key="input_email",
+)
+if st.session_state.err_email:
+    st.markdown(
+        f"<div class='field-error'>⚠️ {st.session_state.err_email}</div>",
+        unsafe_allow_html=True,
+    )
+
+password = st.text_input(
+    "Create password",
+    type="password",
+    placeholder="Min 8 chars: letters, numbers, symbols",
+    key="input_password",
+)
+
+if password:
+    checks = [
+        (len(password) >= 8,                          "at least 8 characters"),
+        (bool(re.search(r"[A-Za-z]", password)),      "1 letter"),
+        (bool(re.search(r"\d", password)),            "1 number"),
+        (bool(re.search(r"[^A-Za-z0-9\s]", password)), "1 symbol"),
+        (not re.search(r"\s", password),              "no spaces"),
+    ]
+    items = "".join(
+        f"<div style='font-size:14px; margin:2px 0; "
+        f"color:{'#2E7D32' if ok else '#9E9E9E'};'>"
+        f"{'✅' if ok else '⬜'} {label}</div>"
+        for ok, label in checks
+    )
+    st.markdown(
+        f"<div style='background:#F1F8E9; border-left:3px solid #A5D6A7; "
+        f"padding:8px 12px; border-radius:6px; margin-top:-8px; margin-bottom:12px;'>"
+        f"{items}</div>",
+        unsafe_allow_html=True,
+    )
+
+if st.session_state.err_password:
+    st.markdown(
+        f"<div class='field-error'>⚠️ {st.session_state.err_password}</div>",
+        unsafe_allow_html=True,
+    )
+
+confirm = st.text_input(
+    "Confirm password",
+    type="password",
+    placeholder="Re-enter password",
+    key="input_confirm",
+)
+if st.session_state.err_confirm:
+    st.markdown(
+        f"<div class='field-error'>⚠️ {st.session_state.err_confirm}</div>",
+        unsafe_allow_html=True,
+    )
+
 btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
 with btn_col2:
     submitted = st.button("✨ Create Account", use_container_width=True)
 
 if submitted:
-    if not username or not email or not password:
-        st.warning("⚠️ Please fill in all fields.")
-    elif len(username) < 3:
-        st.warning("⚠️ Username must be at least 3 characters.")
-    elif not validate_email_format(email):
-        st.warning("⚠️ Please enter a valid email address.")
-    elif len(password) < 6:
-        st.warning("⚠️ Password must be at least 6 characters.")
-    elif password != confirm:
-        st.warning("⚠️ Passwords do not match.")
+    for _k in ("err_username", "err_email", "err_password", "err_confirm"):
+        st.session_state[_k] = ""
+
+    ok = True
+
+    # ---- username (PRESERVES CASE) ----
+    uname = (username or "").strip()
+    if not uname:
+        st.session_state.err_username = "Username cannot be empty."
+        ok = False
+    elif len(uname) < 3:
+        st.session_state.err_username = "Username must be at least 3 characters."
+        ok = False
+    elif len(uname) > 20:
+        st.session_state.err_username = "Username must be 20 characters or fewer."
+        ok = False
+    elif not re.fullmatch(r"[A-Za-z0-9_]+", uname):
+        st.session_state.err_username = "Username may only contain letters, digits, and underscores."
+        ok = False
+
+    # ---- email (regex-based) ----
+    email_clean = (email or "").strip()
+    if not email_clean:
+        st.session_state.err_email = "Email cannot be empty."
+        ok = False
+    elif "@" not in email_clean:
+        st.session_state.err_email = "Email must contain an '@' (e.g. name@gmail.com)."
+        ok = False
+    elif email_clean.count("@") != 1:
+        st.session_state.err_email = "Email must contain exactly one '@'."
+        ok = False
+    elif ".." in email_clean:
+        st.session_state.err_email = "Email cannot contain consecutive dots ('..')."
+        ok = False
+    elif email_clean.startswith(".") or email_clean.endswith("."):
+        st.session_state.err_email = "Email cannot start or end with a dot."
+        ok = False
+    elif " " in email_clean:
+        st.session_state.err_email = "Email cannot contain spaces."
+        ok = False
+    elif not validate_email_format(email_clean):
+        st.session_state.err_email = (
+            "Please enter a valid email address "
+            "(e.g. name@gmail.com — valid domain, 2+ letter TLD)."
+        )
+        ok = False
     else:
+        email_clean = email_clean.lower()
+
+    # ---- password ----
+    if not password:
+        st.session_state.err_password = "Password cannot be empty."
+        ok = False
+    else:
+        pw_ok, missing = validate_password_strength(password)
+        if not pw_ok:
+            st.session_state.err_password = (
+                "Password must contain " + ", ".join(missing) + "."
+            )
+            ok = False
+
+    # ---- confirm ----
+    if not confirm:
+        st.session_state.err_confirm = "Please re-enter your password."
+        ok = False
+    elif password and confirm != password:
+        st.session_state.err_confirm = "Passwords do not match."
+        ok = False
+
+    # ---- DB uniqueness (case-insensitive username + email) ----
+    if ok:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE email = ?", (email,))
-        existing_user = c.fetchone()
-        conn.close()
         
-        if existing_user:
-            st.error("❌ This email is already registered. Please login.")
+        c.execute("SELECT 1 FROM users WHERE LOWER(TRIM(username)) = ?", (uname.lower(),))
+        if c.fetchone():
+            st.session_state.err_username = "This username is already taken. Please choose another."
+            ok = False
+            
+        c.execute("SELECT 1 FROM users WHERE LOWER(TRIM(email)) = ?", (email_clean,))
+        if c.fetchone():
+            st.session_state.err_email = "This email is already registered. Try logging in."
+            ok = False
+            
+        conn.close()
+
+    # ---- server-side email verification ----
+    if ok:
+        trusted_domains = ("@gmail.com", "@yahoo.com", "@outlook.com", "@hotmail.com", "@icloud.com")
+        if email_clean.endswith(trusted_domains):
+            pass
         else:
             with st.spinner("Verifying email address..."):
-                valid, message = verify_email(email)
+                valid, message = verify_email(email_clean)
             
             if valid is False:
-                st.error(message)
-            else:
-                if valid is None:
-                    st.warning(message)
-                else:
-                    st.success(message)
-                
-                success, msg = create_user(username, email, password)
-                if success:
-                    st.success(f"✅ {msg}")
-                    st.balloons()
-                    st.info("You can now login with your credentials!")
-                    st.session_state.account_created = True
-                else:
-                    st.error(f"❌ {msg}")
+                if "Did you mean" in message or "temporary" in message:
+                    st.session_state.err_email = message
+                    ok = False
 
-# ---------- GO TO LOGIN BUTTON ----------
-if st.session_state.account_created:
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("🔐 Go to Login", use_container_width=True):
-            st.session_state.account_created = False
-            st.switch_page("pages/login.py")
+    # ---- create ----
+    if ok:
+        success, msg = create_user(uname, email_clean, password)
+        if success:
+            st.session_state.created_username = uname
+            st.session_state.created_email = email_clean
+            st.session_state.show_success = True
+            st.rerun()
+        else:
+            low = msg.lower()
+            if "username" in low:
+                st.session_state.err_username = msg
+            elif "email" in low:
+                st.session_state.err_email = msg
+            else:
+                st.error(f"❌ {msg}")
+
+    if not ok:
+        st.rerun()

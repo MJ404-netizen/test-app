@@ -195,6 +195,33 @@ hide_streamlit_style = f"""
             transform: translateY(-3px);
         }}
 
+        /* ---------- GO TO LOGIN BUTTON DESIGN ---------- */
+        div.stButton > button {{
+            width: 100% !important;
+            border-radius: 60px !important;
+            padding: 15px 20px !important;
+            font-size: 24px !important;
+            font-weight: 700 !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: all 0.25s ease !important;
+            text-align: center !important;
+            min-height: 60px !important;
+            background: #4CAF50 !important;
+            color: white !important;
+            margin-top: 15px !important;
+        }}
+        div.stButton > button:hover {{
+            background: #43A047 !important;
+            box-shadow: 0 14px 34px rgba(76, 175, 80, 0.40) !important;
+            transform: translateY(-3px);
+        }}
+        div.stButton > button p {{
+            color: white !important;
+            font-size: 24px !important;
+            font-weight: 700 !important;
+        }}
+
         /* ---------- FORCE NAVIGATION TO ABSOLUTE CORNERS ---------- */
         div[data-testid="stHorizontalBlock"]:has(.st-key-home_button) {{
             position: relative !important;

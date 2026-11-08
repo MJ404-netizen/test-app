@@ -1,0 +1,58 @@
+[
+  {
+    "date": "2026-11-08 20:46:36",
+    "gender": "Male",
+    "gender_code": 0,
+    "age": 21,
+    "stress_type": "No Stress",
+    "percentage": 33.91304347826087,
+    "svm_confidence": 0.8976070286200837,
+    "svm_probabilities": {
+      "Distress": 0.011854062996156467,
+      "Eustress": 0.09053890838375978,
+      "No Stress": 0.8976070286200837
+    },
+    "category_scores": {
+      "\ud83e\ude7a Physical & Health Indicators": 1.3333333333333333,
+      "\ud83d\ude30 Emotional & Stress Indicators": 1.4444444444444444,
+      "\ud83d\udcda Academic & Environment Stressors": 2.111111111111111,
+      "\ud83d\udcac Social & Relationship Factors": 1.5
+    },
+    "top_stress_areas": [
+      {
+        "question": "Do you attend classes regularly?",
+        "category": "\ud83d\udcda Academic & Environment Stressors",
+        "score": 5,
+        "level": "High"
+      }
+    ],
+    "answers": {
+      "1": "Male",
+      "2": "21",
+      "3": "2 - Rarely",
+      "4": "2 - Rarely",
+      "5": "1 - Minimal/Mild",
+      "6": "2 - Rarely",
+      "7": "1 - Never",
+      "8": "1 - Never",
+      "9": "2 - Rarely",
+      "10": "1 - Never",
+      "11": "1 - Never",
+      "12": "1 - Never",
+      "13": "1 - Never",
+      "14": "2 - Rarely",
+      "15": "1 - Never",
+      "16": "1 - Never",
+      "17": "1 - Never",
+      "18": "2 - Rarely",
+      "19": "2 - Rarely",
+      "20": "3 - Sometimes",
+      "21": "2 - Rarely",
+      "22": "1 - Never",
+      "23": "2 - Rarely",
+      "24": "5 - Always",
+      "25": "2 - Rarely"
+    },
+    "total_questions": 25
+  }
+]

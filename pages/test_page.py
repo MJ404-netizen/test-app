@@ -63,8 +63,9 @@ hide_streamlit_style = f"""
         .welcome-subtitle {{ font-size: 24px; color: #2E7D32; margin-top: 10px; }}
         .user-greeting {{ font-size: 28px; color: #1B5E20; font-weight: 600; margin: 20px 0; }}
 
-        /* ---------- GENERAL ACTION BUTTONS (Start Test & View History) ---------- */
-        div[data-testid="stHorizontalBlock"] div.stButton > button {{
+        /* ---------- GENERAL ACTION BUTTONS (Start Test, View History, Login) ---------- */
+        div[data-testid="stHorizontalBlock"] div.stButton > button,
+        div.stButton > button {{
             width: 100% !important;
             border-radius: 60px !important;
             padding: 15px 20px !important;
@@ -82,14 +83,16 @@ hide_streamlit_style = f"""
         }}
 
         /* TARGET THE TEXT INSIDE THE BUTTONS TO MATCH CLEAR HISTORY */
-        div[data-testid="stHorizontalBlock"] div.stButton > button p {{
+        div[data-testid="stHorizontalBlock"] div.stButton > button p,
+        div.stButton > button p {{
             font-size: 24px !important; 
             font-weight: 700 !important;
             color: white !important;
             margin: 0 !important;
         }}
 
-        div[data-testid="stHorizontalBlock"] div.stButton > button:hover {{
+        div[data-testid="stHorizontalBlock"] div.stButton > button:hover,
+        div.stButton > button:hover {{
             background: #43A047 !important;
             box-shadow: 0 14px 34px rgba(76, 175, 80, 0.40) !important;
             transform: translateY(-3px) !important;
@@ -97,14 +100,16 @@ hide_streamlit_style = f"""
         }}
 
         /* Disabled Button State */
-        div[data-testid="stHorizontalBlock"] div.stButton > button:disabled {{
+        div[data-testid="stHorizontalBlock"] div.stButton > button:disabled,
+        div.stButton > button:disabled {{
             background: #A5D6A7 !important;
             color: #E8F5E9 !important;
             cursor: not-allowed !important;
             transform: none !important;
             box-shadow: none !important;
         }}
-        div[data-testid="stHorizontalBlock"] div.stButton > button:disabled p {{
+        div[data-testid="stHorizontalBlock"] div.stButton > button:disabled p,
+        div.stButton > button:disabled p {{
             color: #E8F5E9 !important;
         }}
 
