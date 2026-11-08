@@ -1,0 +1,138 @@
+[
+  {
+    "date": "2026-11-09 03:35:29",
+    "gender": "Female",
+    "gender_code": 1,
+    "age": 20,
+    "stress_type": "No Stress",
+    "percentage": 33.04347826086956,
+    "svm_confidence": 0.9853863860737939,
+    "svm_probabilities": {
+      "Distress": 0.009435523649827547,
+      "Eustress": 0.005178090276378491,
+      "No Stress": 0.9853863860737939
+    },
+    "category_scores": {
+      "\ud83e\ude7a Physical & Health Indicators": 1.3333333333333333,
+      "\ud83d\ude30 Emotional & Stress Indicators": 1.2222222222222223,
+      "\ud83d\udcda Academic & Environment Stressors": 2.2222222222222223,
+      "\ud83d\udcac Social & Relationship Factors": 1.5
+    },
+    "top_stress_areas": [
+      {
+        "question": "Do you attend classes regularly?",
+        "category": "\ud83d\udcda Academic & Environment Stressors",
+        "score": 5,
+        "level": "High"
+      }
+    ],
+    "answers": {
+      "1": "Female",
+      "2": "20",
+      "3": "2 - Rarely",
+      "4": "1 - Never",
+      "5": "1 - Minimal/Mild",
+      "6": "1 - Never",
+      "7": "1 - Never",
+      "8": "1 - Never",
+      "9": "1 - Never",
+      "10": "2 - Rarely",
+      "11": "1 - Never",
+      "12": "1 - Never",
+      "13": "1 - Never",
+      "14": "1 - Never",
+      "15": "2 - Rarely",
+      "16": "1 - Never",
+      "17": "1 - Never",
+      "18": "1 - Never",
+      "19": "2 - Rarely",
+      "20": "3 - Sometimes",
+      "21": "2 - Rarely",
+      "22": "3 - Sometimes",
+      "23": "2 - Rarely",
+      "24": "5 - Always",
+      "25": "2 - Rarely"
+    },
+    "total_questions": 25
+  },
+  {
+    "date": "2026-11-09 03:33:51",
+    "gender": "Female",
+    "gender_code": 1,
+    "age": 20,
+    "stress_type": "Distress",
+    "percentage": 85.21739130434783,
+    "svm_confidence": 0.9921622333562997,
+    "svm_probabilities": {
+      "Distress": 0.9921622333562997,
+      "Eustress": 0.0036947325417512515,
+      "No Stress": 0.004143034101949296
+    },
+    "category_scores": {
+      "\ud83e\ude7a Physical & Health Indicators": 4.666666666666667,
+      "\ud83d\ude30 Emotional & Stress Indicators": 4.0,
+      "\ud83d\udcda Academic & Environment Stressors": 4.333333333333333,
+      "\ud83d\udcac Social & Relationship Factors": 4.5
+    },
+    "top_stress_areas": [
+      {
+        "question": "Have you been getting headaches more than usual?",
+        "category": "\ud83e\ude7a Physical & Health Indicators",
+        "score": 5,
+        "level": "High"
+      },
+      {
+        "question": "Have you been experiencing any illness or health issues?",
+        "category": "\ud83e\ude7a Physical & Health Indicators",
+        "score": 5,
+        "level": "High"
+      },
+      {
+        "question": "Do you have trouble concentrating on your academic tasks?",
+        "category": "\ud83d\ude30 Emotional & Stress Indicators",
+        "score": 5,
+        "level": "High"
+      },
+      {
+        "question": "Do you feel overwhelmed with your academic workload?",
+        "category": "\ud83d\udcda Academic & Environment Stressors",
+        "score": 5,
+        "level": "High"
+      },
+      {
+        "question": "Are you facing any difficulties with your professors or instructors?",
+        "category": "\ud83d\udcda Academic & Environment Stressors",
+        "score": 5,
+        "level": "High"
+      }
+    ],
+    "answers": {
+      "1": "Female",
+      "2": "20",
+      "3": "3 - Sometimes",
+      "4": "4 - Often",
+      "5": "4 - Panic-Level",
+      "6": "4 - Often",
+      "7": "4 - Often",
+      "8": "5 - Always",
+      "9": "4 - Often",
+      "10": "5 - Always",
+      "11": "4 - Often",
+      "12": "5 - Always",
+      "13": "4 - Often",
+      "14": "5 - Always",
+      "15": "4 - Often",
+      "16": "4 - Often",
+      "17": "5 - Always",
+      "18": "4 - Often",
+      "19": "5 - Always",
+      "20": "4 - Often",
+      "21": "4 - Often",
+      "22": "4 - Often",
+      "23": "4 - Often",
+      "24": "5 - Always",
+      "25": "4 - Often"
+    },
+    "total_questions": 25
+  }
+]

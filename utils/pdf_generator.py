@@ -5,6 +5,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from io import BytesIO
+import re
 
 def generate_pdf_report(gender, gender_code, age, answers, question_texts, categories, 
                         total_score, percentage, stress_type, 
@@ -33,7 +34,8 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
         ["Age:", str(age), "Questions Answered:", str(len(answers))]
     ]
     
-    user_table = Table(user_data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
+    # CHANGED: Increased colWidths from 1.2*inch to 1.8*inch
+    user_table = Table(user_data, colWidths=[1.8*inch, 1.8*inch, 1.8*inch, 1.8*inch])
     user_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
@@ -43,6 +45,9 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
         ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        # CHANGED: Added padding to make the rows taller and look better
+        ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
     ]))
     story.append(user_table)
     story.append(Spacer(1, 20))
@@ -183,8 +188,12 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
             story.append(Paragraph("Specific Recommendations for Your Top Stress Areas", styles['Heading2']))
             story.append(Spacer(1, 10))
             
-            # Wrapping the tips in a list format for the PDF
-            story.append(Paragraph(f"<ul>{specific_tips_html}</ul>", styles['Normal']))
+            tips = re.findall(r'<li>(.*?)</li>', specific_tips_html)
+            
+            for tip in tips:
+                story.append(Paragraph(f"• {tip}", styles['Normal']))
+                story.append(Spacer(1, 6))
+                
             story.append(Spacer(1, 20))
     
     # --- Detailed Responses ---
@@ -205,11 +214,10 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
     ]
     
     for q_id, answer in sorted(answers.items()):
-        # Safely convert q_id to int to prevent the TypeError
         try:
             q_id_int = int(q_id)
         except ValueError:
-            continue # Skip if it's not a valid number
+            continue 
 
         if q_id_int >= 3:
             category_name = "Other"
