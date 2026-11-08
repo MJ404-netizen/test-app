@@ -105,11 +105,20 @@ def send_verification_email(recipient_email, username, code):
         msg.set_content(plain_text)
         msg.add_alternative(html_content, subtype='html')
 
-        # Connect to Gmail SMTP server using Port 587 (STARTTLS) for better Codespace compatibility
-        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-            smtp.starttls()
-            smtp.login(sender_email, app_password)
-            smtp.send_message(msg)
+        # --- SMTP CONNECTION WITH FALLBACK ---
+        try:
+            # Try Port 587 with STARTTLS first (Standard)
+            with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+                smtp.ehlo()          # Identify ourselves
+                smtp.starttls()      # Upgrade to secure
+                smtp.ehlo()          # Identify again over secure
+                smtp.login(sender_email, app_password)
+                smtp.send_message(msg)
+        except Exception as e_587:
+            # If 587 fails, try Port 465 with SSL
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                smtp.login(sender_email, app_password)
+                smtp.send_message(msg)
 
         return True, f"Verification code sent to {recipient_email}!"
         

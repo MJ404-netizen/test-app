@@ -1,5 +1,85 @@
 [
   {
+    "date": "2026-11-09 00:35:02",
+    "gender": "Female",
+    "gender_code": 1,
+    "age": 20,
+    "stress_type": "Distress",
+    "percentage": 80.8695652173913,
+    "svm_confidence": 0.9649088532999999,
+    "svm_probabilities": {
+      "Distress": 0.9649088532999999,
+      "Eustress": 0.02734507857932985,
+      "No Stress": 0.007746068120670219
+    },
+    "category_scores": {
+      "\ud83e\ude7a Physical & Health Indicators": 4.0,
+      "\ud83d\ude30 Emotional & Stress Indicators": 4.333333333333333,
+      "\ud83d\udcda Academic & Environment Stressors": 3.6666666666666665,
+      "\ud83d\udcac Social & Relationship Factors": 4.5
+    },
+    "top_stress_areas": [
+      {
+        "question": "How often have you been dealing with anxiety or tension recently?",
+        "category": "\ud83d\ude30 Emotional & Stress Indicators",
+        "score": 5,
+        "level": "High"
+      },
+      {
+        "question": "Do you get irritated easily?",
+        "category": "\ud83d\ude30 Emotional & Stress Indicators",
+        "score": 5,
+        "level": "High"
+      },
+      {
+        "question": "Have you been feeling sadness or low mood?",
+        "category": "\ud83d\ude30 Emotional & Stress Indicators",
+        "score": 5,
+        "level": "High"
+      },
+      {
+        "question": "Do you often feel lonely or isolated?",
+        "category": "\ud83d\ude30 Emotional & Stress Indicators",
+        "score": 5,
+        "level": "High"
+      },
+      {
+        "question": "Do you struggle to find time for relaxation and leisure activities?",
+        "category": "\ud83d\udcac Social & Relationship Factors",
+        "score": 5,
+        "level": "High"
+      }
+    ],
+    "answers": {
+      "1": "Female",
+      "2": "20",
+      "3": "4 - Often",
+      "4": "4 - Often",
+      "5": "3 - Severe",
+      "6": "4 - Often",
+      "7": "5 - Always",
+      "8": "4 - Often",
+      "9": "5 - Always",
+      "10": "4 - Often",
+      "11": "5 - Always",
+      "12": "4 - Often",
+      "13": "5 - Always",
+      "14": "3 - Sometimes",
+      "15": "3 - Sometimes",
+      "16": "4 - Often",
+      "17": "4 - Often",
+      "18": "4 - Often",
+      "19": "5 - Always",
+      "20": "4 - Often",
+      "21": "4 - Often",
+      "22": "4 - Often",
+      "23": "3 - Sometimes",
+      "24": "4 - Often",
+      "25": "4 - Often"
+    },
+    "total_questions": 25
+  },
+  {
     "date": "2026-11-07 23:46:39",
     "gender": "Female",
     "gender_code": 1,
