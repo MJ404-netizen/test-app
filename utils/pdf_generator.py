@@ -34,7 +34,6 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
         ["Age:", str(age), "Questions Answered:", str(len(answers))]
     ]
     
-    # CHANGED: Increased colWidths from 1.2*inch to 1.8*inch
     user_table = Table(user_data, colWidths=[1.8*inch, 1.8*inch, 1.8*inch, 1.8*inch])
     user_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
@@ -45,7 +44,6 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
         ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        # CHANGED: Added padding to make the rows taller and look better
         ('TOPPADDING', (0, 0), (-1, -1), 12),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
     ]))
@@ -213,34 +211,41 @@ def generate_pdf_report(gender, gender_code, age, answers, question_texts, categ
         ]
     ]
     
-    for q_id, answer in sorted(answers.items()):
+    # Sort the answers numerically by the integer value of the question ID
+    def sort_key(item):
+        try:
+            return int(item[0])
+        except ValueError:
+            return float('inf') # Puts non-numeric keys at the end
+
+    # Iterate through ALL answered questions
+    for q_id, answer in sorted(answers.items(), key=sort_key):
         try:
             q_id_int = int(q_id)
         except ValueError:
             continue 
 
-        if q_id_int >= 3:
-            category_name = "Other"
-            for cat_name, cat_data in categories.items():
-                if q_id_int in cat_data["ids"]:
-                    category_name = cat_name.split()[1] if len(cat_name.split()) > 1 else cat_name
-                    break
-            
-            question_text = str(question_texts.get(q_id_int, f"Q{q_id_int}")).replace("\n", " ").replace("\t", " ").strip()
-            answer_text = str(answer).replace("\n", " ").replace("\t", " ").strip()
-            
-            try:
-                score = int(answer.split(" - ")[0])
-            except:
-                score = "-"
-            
-            answer_data.append([
-                Paragraph(str(q_id_int), cell_style),
-                Paragraph(category_name, cell_style),
-                Paragraph(question_text, cell_style), 
-                Paragraph(str(score), cell_style),
-                Paragraph(answer_text, cell_style)
-            ])
+        category_name = "Other"
+        for cat_name, cat_data in categories.items():
+            if q_id_int in cat_data["ids"]:
+                category_name = cat_name.split()[1] if len(cat_name.split()) > 1 else cat_name
+                break
+        
+        question_text = str(question_texts.get(q_id_int, f"Q{q_id_int}")).replace("\n", " ").replace("\t", " ").strip()
+        answer_text = str(answer).replace("\n", " ").replace("\t", " ").strip()
+        
+        try:
+            score = int(answer.split(" - ")[0])
+        except:
+            score = "-"
+        
+        answer_data.append([
+            Paragraph(str(q_id_int), cell_style),
+            Paragraph(category_name, cell_style),
+            Paragraph(question_text, cell_style), 
+            Paragraph(str(score), cell_style),
+            Paragraph(answer_text, cell_style)
+        ])
     
     answer_table = Table(answer_data, colWidths=[0.4*inch, 0.9*inch, 3.8*inch, 0.5*inch, 1.85*inch])
     
