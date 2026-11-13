@@ -114,23 +114,35 @@ hide_streamlit_style = """
             margin: 0 !important;
         }
 
+        /* ---------- DISCLAIMER FOOTER ---------- */
+        .disclaimer-wrapper {
+            display: flex;
+            justify-content: center;
+            margin-top: 80px; /* Pushes it down towards the bottom of the page */
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+        .disclaimer-text {
+            color: black;
+            font-weight: bold;
+            font-size: 14px;
+            text-align: center;
+            max-width: 700px; /* Prevents the text from stretching too wide */
+            line-height: 1.5;
+        }
+
         /* ---------- MOBILE RESPONSIVENESS ---------- */
         @media (max-width: 768px) {
-            /* Stack columns vertically, center the content */
             div[data-testid="stHorizontalBlock"] {
                 flex-direction: column !important;
                 align-items: center !important;
                 gap: 14px !important;
             }
-
-            /* Each column takes full width so buttons center consistently */
             div[data-testid="column"] {
                 width: 100% !important;
                 display: flex !important;
                 justify-content: center !important;
             }
-
-            /* Remove the horizontal offsets that misalign buttons on mobile */
             .stButton button[kind="primary"] {
                 margin-right: 0 !important;
                 margin-left: 0 !important;
@@ -139,8 +151,6 @@ hide_streamlit_style = """
                 margin-left: 0 !important;
                 margin-right: 0 !important;
             }
-
-            /* Center each button with a max-width so both are equal and centered */
             .stButton {
                 width: 100% !important;
                 display: flex !important;
@@ -153,8 +163,6 @@ hide_streamlit_style = """
                 padding: 20px 15px !important;
                 margin: 0 auto !important;
             }
-
-            /* Slightly smaller label so text fits on narrow screens */
             .stButton button p,
             .stButton > button p {
                 font-size: 26px !important;
@@ -192,6 +200,18 @@ with col2:
 
 # ---------- FOOTER ----------
 st.markdown('<p class="footer">All responses are kept strictly confidential</p>', unsafe_allow_html=True)
+
+# Wrapped in a div with flexbox to center it perfectly
+st.markdown(
+    """
+    <div class="disclaimer-wrapper">
+        <div class="disclaimer-text">
+            💡 This report is for informational purposes only. If you're experiencing severe stress, please consult a mental health professional.
+        </div>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
 
 # ---------- NAVIGATION LOGIC ----------
 if login_clicked:

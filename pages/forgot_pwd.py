@@ -320,7 +320,7 @@ if "err_confirm_password" not in st.session_state:
     st.session_state.err_confirm_password = ""
 
 # ---------- MAIN CONTENT ----------
-st.title("🔑 Forgot Password / Username")
+st.title("🔑 Forgot Password")
 
 # ---------- STEP 1: ENTER EMAIL ----------
 if st.session_state.reset_step == "email":
