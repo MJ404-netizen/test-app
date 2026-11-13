@@ -364,11 +364,6 @@ if st.session_state.reset_step == "email":
 # ---------- STEP 2: VERIFY CODE ----------
 elif st.session_state.reset_step == "verify":
     st.write(f"📩 A verification code has been sent to **{st.session_state.reset_email}**")
-    st.write("Enter the 6-digit code below:")
-    
-    # Testing checkbox - REMOVE THIS BEFORE LAUNCH
-    if st.checkbox("Show code (testing only)"):
-        st.info(f"📝 Your verification code is: **{st.session_state.verification_code}**")
     
     code_input = st.text_input("Verification Code", placeholder="Enter 6-digit code", max_chars=6)
     
@@ -394,40 +389,48 @@ elif st.session_state.reset_step == "verify":
                 st.session_state.reset_step = "email"
                 st.rerun()
     
-    col1, col2, col3, col4, col5 = st.columns([1.5, 1, 0.3, 1, 1.5])
-    with col2:
-        st.markdown('<div class="st-key-short_btn_wrap">', unsafe_allow_html=True)
+    # We define the resend section as a fragment so it can auto-refresh
+    @st.fragment(run_every=1)
+    def render_resend_buttons():
+        col1, col2, col3, col4, col5 = st.columns([1.5, 1, 0.3, 1, 1.5])
+        with col2:
+            st.markdown('<div class="st-key-short_btn_wrap">', unsafe_allow_html=True)
+            
+            # Calculate cooldown
+            time_passed = time.time() - st.session_state.last_sent_time
+            can_resend = time_passed > 60
+            
+            if st.button("🔄 Resend Code", type="secondary", use_container_width=True, disabled=not can_resend):
+                code = generate_verification_code()
+                st.session_state.verification_code = code
+                st.session_state.last_sent_time = time.time() # Reset timer
+                
+                # Fetch username again for the resend email
+                username = get_username_from_db(st.session_state.reset_email)
+                success, message = send_verification_email(st.session_state.reset_email, username, code)
+                
+                if success:
+                    st.success(f"✅ New code sent to {st.session_state.reset_email}")
+                else:
+                    st.error(f"❌ {message}")
+                
+                # Rerun the whole app to refresh state cleanly
+                st.rerun()
+                
+            if not can_resend:
+                st.caption(f"Wait {int(60 - time_passed)}s")
+                
+            st.markdown('</div>', unsafe_allow_html=True)
         
-        # Calculate cooldown
-        time_passed = time.time() - st.session_state.last_sent_time
-        can_resend = time_passed > 60
-        
-        if st.button("🔄 Resend Code", type="secondary", use_container_width=True, disabled=not can_resend):
-            code = generate_verification_code()
-            st.session_state.verification_code = code
-            st.session_state.last_sent_time = time.time() # Reset timer
-            
-            # Fetch username again for the resend email
-            username = get_username_from_db(st.session_state.reset_email)
-            success, message = send_verification_email(st.session_state.reset_email, username, code)
-            
-            if success:
-                st.success(f"✅ New code sent to {st.session_state.reset_email}")
-            else:
-                st.error(f"❌ {message}")
-            st.rerun()
-            
-        if not can_resend:
-            st.caption(f"Wait {int(60 - time_passed)}s")
-            
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown('<div class="st-key-short_btn_wrap">', unsafe_allow_html=True)
-        if st.button("← Back to Email", type="secondary", use_container_width=True):
-            st.session_state.reset_step = "email"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        with col4:
+            st.markdown('<div class="st-key-short_btn_wrap">', unsafe_allow_html=True)
+            if st.button("← Back to Email", type="secondary", use_container_width=True):
+                st.session_state.reset_step = "email"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # Call the fragment
+    render_resend_buttons()
 
 # ---------- STEP 3: RESET PASSWORD ----------
 elif st.session_state.reset_step == "reset":
